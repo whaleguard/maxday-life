@@ -512,7 +512,7 @@ function setupDriveInVideo() {
   const r = new CSS3DRenderer(); r.setSize(innerWidth, innerHeight);
   Object.assign(r.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '1' });
   document.body.insertBefore(r.domElement, $('#labels'));
-  const div = document.createElement('div'); div.style.width = '1100px'; div.style.height = '600px'; div.style.background = '#000'; div.style.pointerEvents = 'none';
+  const div = document.createElement('div'); div.style.width = '1900px'; div.style.height = '1040px'; div.style.background = '#000'; div.style.pointerEvents = 'none';
   const f = document.createElement('iframe'); f.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&playsinline=1&rel=0&modestbranding=1`;
   f.allow = 'autoplay; encrypted-media'; Object.assign(f.style, { width: '100%', height: '100%', border: '0', pointerEvents: 'none' }); div.appendChild(f);
   const o = new CSS3DObject(div); DRIVE_IN.mesh.updateWorldMatrix(true, false); DRIVE_IN.mesh.matrixWorld.decompose(o.position, o.quaternion, new THREE.Vector3()); o.scale.setScalar(0.01);
