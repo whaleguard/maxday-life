@@ -107,7 +107,7 @@ export function buildMap({ low }) {
     if (Math.hypot((x + 30) / 13, (z + 40) / 9) < 1.3) continue;
     if (Math.abs(x + 28) < 3.5 && z > -37) continue;
     if (Math.hypot(x - 27, z + 16) < 8) continue;
-    if (Math.abs(x - DRIVE_IN.pos[0]) < 15 && z > DRIVE_IN.pos[2] - 6) continue;
+    if (Math.abs(x - DRIVE_IN.pos[0]) < 17 && z > DRIVE_IN.pos[2] - 6) continue;
     pines.push([x, h - 0.1, z, 3 + rand() * 3.5, rand() * 3]);
   }
   scene.add(instancedPines(pines));
@@ -140,7 +140,7 @@ export function buildMap({ low }) {
   };
 }
 
-function nearAny(x, z, r) { return Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 14 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
+function nearAny(x, z, r) { return Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 16 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function house(roofCol, seed) {
@@ -374,17 +374,19 @@ function restaurantBuilding() {
 }
 
 /* ---------- 자동차 극장 (대형 야외 스크린 + 광고) ---------- */
-export const DRIVE_IN = { pos: [13, 0, -27] };
+export const DRIVE_IN = { pos: [11, 0, -30] };
 function driveIn(anim) {
-  const g = new THREE.Group(); const [cx, , cz] = DRIVE_IN.pos; g.position.set(cx, heightAt(cx, cz), cz); g.rotation.y = -0.05; g.scale.setScalar(1.45);
-  const lot = new THREE.Mesh(new THREE.PlaneGeometry(16, 13), new THREE.MeshStandardMaterial({ color: '#5d5c58', roughness: 0.95 })); lot.rotation.x = -Math.PI / 2; lot.position.set(0, 0.07, 4.5); g.add(lot);
-  const base = new THREE.Mesh(new THREE.BoxGeometry(16.4, 4, 13.4), new THREE.MeshStandardMaterial({ map: stoneTex('#a59a88', { tiles: 3, repeat: [6, 2] }), roughness: 0.9 })); base.position.set(0, -1.97, 4.5); g.add(base);
+  const g = new THREE.Group(); const [cx, , cz] = DRIVE_IN.pos; g.position.set(cx, heightAt(cx, cz), cz); g.rotation.y = -0.05; g.scale.setScalar(1.3);
+  const lot = new THREE.Mesh(new THREE.PlaneGeometry(21, 13), new THREE.MeshStandardMaterial({ color: '#5d5c58', roughness: 0.95 })); lot.rotation.x = -Math.PI / 2; lot.position.set(0, 0.07, 4.5); g.add(lot);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(21.4, 4, 13.4), new THREE.MeshStandardMaterial({ map: stoneTex('#a59a88', { tiles: 3, repeat: [6, 2] }), roughness: 0.9 })); base.position.set(0, -1.97, 4.5); g.add(base);
   for (let i = -3; i <= 3; i++) { const l = box(0.08, 0.01, 2.6, M('#e8e2d0')); l.position.set(i * 2, 0.08, 6.6); g.add(l); const l2 = l.clone(); l2.position.z = 9.8; g.add(l2); }
   // 스크린 (광고 슬라이드)
-  for (const s of [-1, 1]) place(box(0.35, 7, 0.35, M('#3a3533')), s * 5.6, 3.5, -0.2, g);
-  const frame = box(11.6, 6.4, 0.3, M('#2b2b2b')); frame.position.set(0, 4.6, -0.2); g.add(frame);
+  const SW = 19, SH = 10.4, SY = 1.6 + SH / 2;
+  for (const s of [-1, 1]) for (const k of [0, 1]) place(box(0.45, SY + SH / 2, 0.45, M('#3a3533')), s * (SW / 2 - 0.4) * (k ? 0.45 : 1), (SY + SH / 2) / 2, -0.5, g);
+  const frame = box(SW + 0.7, SH + 0.7, 0.4, M('#2b2b2b')); frame.position.set(0, SY, -0.25); g.add(frame);
+  const bulbs = new THREE.MeshBasicMaterial({ color: '#ffd27a' }); for (let i = 0; i <= 24; i++) { const bx = -SW / 2 - 0.2 + i * (SW + 0.4) / 24; for (const by of [SY - SH / 2 - 0.25, SY + SH / 2 + 0.25]) place(new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4), bulbs), bx, by, -0.02, g); }
   const c = document.createElement('canvas'); c.width = 1280; c.height = 704; const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(11, 6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.set(0, 4.6, -0.04); g.add(scr);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.set(0, SY, -0.04); g.add(scr);
   // 접속하자마자 재생되는 홍보 영상 (라이프카드) — 캔버스 애니메이션
   const logo = new Image(); logo.src = BRAND.logo;
   const SC = [[`${BRAND.en} CARD`, `${BRAND.short} 라이프카드`], ['한 장으로 마을 어디서나', '기도 · 놀이터 · 카페 · 식당'], ['화면을 눌러 크게 보기', '소리와 함께 감상할 수 있어요']];
@@ -410,14 +412,14 @@ function driveIn(anim) {
     ctx.restore();
     // 문구 (페이드)
     const a = Math.min(1, lt / 0.8, (6 - lt) / 0.8); ctx.globalAlpha = Math.max(0, a); ctx.textAlign = 'left';
-    ctx.fillStyle = '#fff3dc'; let fs = 66; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; while (ctx.measureText(SC[ph][0]).width > 600 && fs > 30) { fs -= 2; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; } ctx.fillText(SC[ph][0], 660, 320 + (1 - a) * 20);
-    ctx.fillStyle = '#e9c98a'; ctx.font = '600 40px "Noto Sans KR", sans-serif'; ctx.fillText(SC[ph][1], 660, 392 + (1 - a) * 20); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff3dc'; let fs = 96; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; while (ctx.measureText(SC[ph][0]).width > 590 && fs > 30) { fs -= 2; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; } ctx.fillText(SC[ph][0], 650, 330 + (1 - a) * 20);
+    ctx.fillStyle = '#e9c98a'; ctx.font = '700 50px "Noto Sans KR", sans-serif'; ctx.fillText(SC[ph][1], 650, 410 + (1 - a) * 20); ctx.globalAlpha = 1;
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, H - 8, W, 8); ctx.fillStyle = '#c9ae73'; ctx.fillRect(0, H - 8, W * ((T % 18) / 18), 8);
     tex.needsUpdate = true;
   };
   draw(); anim.push((t, red, dt) => { T += dt || 0.016; acc += dt || 0.016; if (acc > (red ? 0.5 : 0.05)) { acc = 0; draw(); } });
   g.userData.screenMesh = scr; DRIVE_IN.mesh = scr;
-  const glow = new THREE.PointLight('#bcd2ff', 6, 18, 1.6); glow.position.set(0, 4.5, 3); g.add(glow);
+  const glow = new THREE.PointLight('#bcd2ff', 8, 24, 1.6); glow.position.set(0, 5, 4); g.add(glow);
   // 줄지어 선 자동차
   const cols = ['#c0392b', '#2e86de', '#f1c40f', '#ecf0f1', '#27ae60', '#8e44ad', '#e67e22', '#34495e', '#d35400', '#16a085'];
   let k = 0;
