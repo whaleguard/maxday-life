@@ -240,3 +240,54 @@ body.focused .nametag.pin{opacity:.0;pointer-events:none}
 .logo-card{width:auto;max-width:300px;display:flex;justify-content:center}
 .logo-card img{width:auto;max-width:276px;max-height:118px}
 @media (max-width:639px){ .logo-card{max-width:240px} .logo-card img{max-width:216px;max-height:92px} }
+
+/* ---------- 카페·식당 예약 ---------- */
+.sc-btns{display:flex;gap:8px}.sc-btns .btn{flex:1}
+.resv-sheet{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:18px}
+.rv-tabs{display:flex;gap:6px;margin-bottom:8px}
+.rv-tab{flex:1;min-height:44px;border-radius:12px;border:1px solid #DED8CD;background:#fff;font-weight:600;color:#233335}
+.rv-tab.on{background:#233335;color:#F7F2E8;border-color:#233335}
+.rv-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rv-bar select{height:48px;border-radius:12px;border:1px solid #C9C4B8;padding:0 8px;font-size:15px;font-family:inherit;background:#fff;flex:1 1 120px}
+.rv-size{display:flex;align-items:center;gap:6px;border:1px solid #C9C4B8;border-radius:12px;background:#fff;padding:0 4px;height:48px}
+.rv-size button{width:40px;height:40px;border:0;background:#efe6d2;border-radius:10px;font-size:18px}
+.rv-size b{min-width:40px;text-align:center}
+.rv-plan{margin:6px 0;border-radius:14px;background:#fff;border:1px solid #e3dccb;padding:6px;transition:opacity .2s}
+.rv-plan.loading{opacity:.4}
+.rv-plan svg{width:100%;height:auto;display:block}
+.rv-t{cursor:pointer}.rv-t.off{cursor:not-allowed}
+.rv-t:not(.off):hover rect,.rv-t:not(.off):hover circle{filter:brightness(1.06)}
+.rv-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#5b6b6c;margin-bottom:6px}
+.rv-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid rgba(0,0,0,.15)}
+.rv-pick{background:#efe6d2;border-radius:12px;padding:10px 12px;margin:6px 0}
+.rv-menu h4{margin:10px 0 4px;font-size:14px;color:#7b6a46}
+.rv-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee5d4}
+.rv-item .nm{flex:1;font-size:15px}.rv-item .pr{font-size:14px;color:#5b6b6c;white-space:nowrap}
+.rv-item .qty{display:flex;align-items:center;gap:6px}.rv-item .qty button{width:36px;height:36px;border-radius:10px;border:1px solid #d6cdb8;background:#fff;font-size:16px}
+.rv-item .qty b{min-width:18px;text-align:center}
+.rv-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rv-form input{height:48px;border-radius:12px;border:1px solid #C9C4B8;padding:0 12px;font-size:16px;font-family:inherit;min-width:0}
+.rv-form #rv-memo{grid-column:1/-1}
+.rv-submit{width:100%;margin-top:6px}
+.rv-card{border:1px solid #DED8CD;background:#fff;border-radius:14px;padding:12px;margin-bottom:8px}
+.rv-card-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rv-card .row{justify-content:flex-start}
+.rv-json{background:#1f2627;color:#d7f0e8;font-size:12px;padding:10px;border-radius:10px;overflow:auto;max-height:240px}
+@media (max-width:1279px){ .enter-grid{grid-template-columns:repeat(3,minmax(0,1fr));width:min(720px,calc(100vw - 32px))} }
+@media (min-width:1280px){ .enter-grid{grid-template-columns:repeat(6,200px)} }
+@media (max-width:639px){
+  .enter-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .enter-btn{height:58px;padding:0 4px}.enter-btn .n{font-size:13px;letter-spacing:-.5px}.enter-btn .d{font-size:11px}
+  .g-menu{bottom:calc(16px + 58px*2 + 6px + 12px + var(--sab))}
+  .rv-form{grid-template-columns:1fr}
+}
+
+.video-sheet{width:min(1100px,calc(100vw - 32px));height:auto;max-height:calc(100dvh - 32px);display:flex;flex-direction:column}
+.video-sheet .prog-body{position:relative;aspect-ratio:16/9;flex:none;height:auto}
+.video-sheet iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vd-foot{display:flex;gap:8px;align-items:center;padding:10px 14px;flex-wrap:wrap}
+.vd-foot input{flex:1;min-width:180px;height:40px;border-radius:10px;border:1px solid #d8cdb8;padding:0 12px;font:inherit}
+.vd-foot a{font-size:13px;color:#7a5a1a;white-space:nowrap}
+.vd-empty{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:24px;max-width:560px;margin:0 auto;gap:6px}
+.vd-empty a{color:#7a5a1a}
+@media (max-width:639px){ .video-sheet{width:100vw;max-height:100dvh} }
