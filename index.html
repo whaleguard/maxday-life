@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="mode-garden">
@@ -42,7 +42,7 @@
 <!-- ===== 내부 공간 ===== -->
 <section id="room-ui" aria-label="공간 내부" hidden>
   <div class="topbar">
-    <div class="tb-left"><strong id="room-name">맥스데이사</strong><span id="room-no" class="muted">1번 방</span></div>
+    <div class="tb-left"><img id="room-logo" alt="" hidden><strong id="room-name">맥스데이사</strong><span id="room-no" class="muted">1번 방</span></div>
     <div class="tb-right">
       <span class="people" id="people" title="실제 접속 인원 (체험용 방문객 제외)">👤 <b id="people-n">1</b>명</span>
       <span class="pts" id="pts" title="공덕 포인트">🪷 <b id="pts-n">0</b></span>
@@ -234,6 +234,7 @@
     <img class="bl-map" src="assets/tex/yongma_booth-layout.webp" alt="부스 배치도" loading="lazy">
     <h3>먹거리부스 16곳</h3><div class="bl-grid" id="bl-food"></div>
     <h3>플리마켓 4곳</h3><div class="bl-grid" id="bl-market"></div>
+    <h3>어서와존 · K-미식벨트 강릉 향토음식</h3><div class="bl-grid" id="bl-kbelt"></div>
     <p class="tiny muted">누르면 그 부스로 걸어가요. 운영자 개인정보는 싣지 않습니다.</p>
   </div>
 </div>
@@ -248,6 +249,6 @@
 <div id="hint" hidden><div class="hint-card"><b>이렇게 이용해요</b><p id="hint-text"></p><button class="btn primary" id="hint-ok">알겠어요</button></div></div>
 <div id="fatal" class="overlay" hidden><div class="load-card"><p id="fatal-text"></p><div class="load-actions"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div>
 
-<script type="module" src="js/main.js?v=7"></script>
+<script type="module" src="js/main.js?v=8"></script>
 </body>
 </html>
