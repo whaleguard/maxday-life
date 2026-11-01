@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=3">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="mode-garden">
@@ -20,8 +20,8 @@
 <!-- ===== 정원(갈림길) ===== -->
 <section id="garden-ui" aria-label="공간 선택">
   <header class="g-head">
-    <div class="logo-card"><img src="assets/logo.png" alt="MAX DAY LIFE" width="840" height="389"></div>
-    <div class="brand-ko">맥스데이 라이프</div>
+    <div class="logo-card"><img id="brand-logo" src="assets/logo.png" alt="MAX DAY LIFE"></div>
+    <div class="brand-ko" id="brand-ko">맥스데이 라이프</div>
     <p class="g-guide">머물고 싶은 공간을 골라주세요.</p>
   </header>
   <nav class="g-menu" aria-label="공통 메뉴">
@@ -102,7 +102,7 @@
   <div class="sheet scroll">
     <h2>이용 안내</h2>
     <ul class="help">
-      <li>입구에서 <b>맥스데이사 · 맥스데이교회 · 맥스데이성당 · 맥스데이 놀이터</b> 중 한 곳을 고르세요.</li>
+      <li>입구에서 <b id="help-spaces">맥스데이사 · 맥스데이교회 · 맥스데이성당 · 맥스데이 놀이터</b> 중 한 곳을 고르세요.</li>
       <li>바닥이나 빈자리를 누르면 캐릭터가 걸어가 앉아요. PC에서는 방향키로도 움직일 수 있어요.</li>
       <li>앉은 뒤 아래 버튼으로 합장·절하기(절), 기도하기(교회·성당), 차·커피 마시기(다도실·카페)를 할 수 있어요.</li>
       <li>성당 봉헌초 구역에서 빈 초를 누르면 촛불이 켜지고 10분 동안 모두에게 보여요(무료 가상 체험).</li>
@@ -184,6 +184,6 @@
 <div id="hint" hidden><div class="hint-card"><b>이렇게 이용해요</b><p id="hint-text"></p><button class="btn primary" id="hint-ok">알겠어요</button></div></div>
 <div id="fatal" class="overlay" hidden><div class="load-card"><p id="fatal-text"></p><div class="load-actions"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div>
 
-<script type="module" src="js/main.js?v=2"></script>
+<script type="module" src="js/main.js?v=3"></script>
 </body>
 </html>
