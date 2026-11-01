@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="mode-garden">
@@ -219,10 +219,35 @@
     <div class="vd-foot"><input id="vd-url" placeholder="다른 영상: 유튜브 주소 붙여넣기" aria-label="유튜브 링크"><button class="btn primary" id="vd-save">바꾸기</button><button class="btn" id="vd-reset" hidden>기본 영상</button><a id="vd-search" target="_blank" rel="noopener">유튜브에서 찾기 ↗</a></div>
   </div>
 </div>
+
+<div id="modal-booth" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="bt-name">
+  <div class="sheet booth-sheet">
+    <div class="bb-head"><div class="bt-head"><span class="bt-no" id="bt-no">1</span><div><h2 id="bt-name">부스</h2><p class="small muted" id="bt-area"></p></div></div><button class="x" data-close aria-label="닫기">✕</button></div>
+    <ul class="bt-menu" id="bt-menu"></ul>
+    <p class="tiny muted" id="bt-note"></p>
+    <div class="bt-btns"><button class="btn primary" id="bt-taste">파라솔에 앉아 맛보기</button><a class="btn" id="bt-route" target="_blank" rel="noopener">현장 길찾기 ↗</a><a class="btn" id="bt-site" target="_blank" rel="noopener">공식 매대 명단 ↗</a></div>
+  </div>
+</div>
+<div id="modal-booths" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="bl-title">
+  <div class="sheet booths-sheet">
+    <div class="bb-head"><h2 id="bl-title">매대 명단</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <img class="bl-map" src="assets/tex/yongma_booth-layout.webp" alt="부스 배치도" loading="lazy">
+    <h3>먹거리부스 16곳</h3><div class="bl-grid" id="bl-food"></div>
+    <h3>플리마켓 4곳</h3><div class="bl-grid" id="bl-market"></div>
+    <p class="tiny muted">누르면 그 부스로 걸어가요. 운영자 개인정보는 싣지 않습니다.</p>
+  </div>
+</div>
+<div id="modal-photo" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="ph-title">
+  <div class="sheet">
+    <div class="bb-head"><h2 id="ph-title">위드메모리 미러포토</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <p>거울 앞에 서서 찰칵! 전신 거울 포토부스 <b>위드메모리 미러포토</b>입니다. 행사·매장에 설치·대여할 수 있어요.</p>
+    <div class="bt-btns"><a class="btn primary" id="ph-go" target="_blank" rel="noopener">mirrorphoto.kr 보기 ↗</a></div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="hint" hidden><div class="hint-card"><b>이렇게 이용해요</b><p id="hint-text"></p><button class="btn primary" id="hint-ok">알겠어요</button></div></div>
 <div id="fatal" class="overlay" hidden><div class="load-card"><p id="fatal-text"></p><div class="load-actions"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div>
 
-<script type="module" src="js/main.js?v=6"></script>
+<script type="module" src="js/main.js?v=7"></script>
 </body>
 </html>
