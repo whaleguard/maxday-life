@@ -3,7 +3,7 @@
 
 // 브랜드: 거래처별 페이지에서 window.MDL_BRAND 로 이름·로고·실시간 공간(ns)을 바꿔 같은 공간을 재사용
 const _B = (typeof window !== 'undefined' && window.MDL_BRAND) || {};
-export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간' };
+export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간', videos: _B.videos || {} };
 const S = BRAND.short;
 
 export const COLORS = { base: '#15272B', panel: '#F4F0E7', accent: '#C9AE73', ink: '#233335' };
@@ -213,4 +213,30 @@ export const ANNEX = {
     counter: { c: [-11, -8.4], size: [3.6, 0.75, 0.9] }, plants: [[-13, 7.8], [-13, -8.5]], action: 'coffee', actionLabel: '커피 마시기', drinkSec: 2.8,
   },
   door: { z0: 4.3, z1: 6.7, h: 2.3 }, partition: { h: 0.85, t: 0.12 },
+};
+
+// v2 — 카페·식당 (지도에 별도 건물): 3D로 미리 둘러보기 + 자리 예약 + 미리 주문 (포스 연동 준비)
+SPACES.cafe = {
+  key: 'cafe', name: S + ' 카페', desc: '카페 · 자리 예약', btn: '카페 가기', short: '카페',
+  room: { w: 16, d: 14, h: 4.2 }, floor: '#C9A27A', wall: '#F2EADB', ceil: '#E9DFCC',
+  sun: ['#FFF1D6', 2.0], amb: ['#F2E6D2', 0.95], spawn: [0, 0, 6.2],
+  actions: [], outfit: 'casual', music: 'cafe',
+};
+SPACES.restaurant = {
+  key: 'restaurant', name: S + ' 식당', desc: '한식당 · 자리 예약', btn: '식당 가기', short: '식당',
+  room: { w: 18, d: 16, h: 4.4 }, floor: '#8E6A4E', wall: '#EFE6D6', ceil: '#E6DAC6',
+  sun: ['#FFEBC8', 1.9], amb: ['#EADCC6', 0.9], spawn: [0, 0, 7.2],
+  actions: [], outfit: 'casual', music: 'cafe',
+};
+SPACE_ORDER.push('cafe', 'restaurant');
+BUTTON_STYLE.cafe = { bg: '#EFE2D0', fg: '#5B3F2A', bd: '#B8956F', hv: '#E5D2B9' };
+BUTTON_STYLE.restaurant = { bg: '#F1DCD3', fg: '#6B2F25', bd: '#C08A77', hv: '#E8C9BC' };
+
+// 스크린 기본 영상 (유튜브 공식 채널 공개 영상을 '퍼가기'로 재생 — 거래처별로 BRAND.videos 로 교체)
+export const VIDEOS = {
+  church: 'G4ymZxboVXY',     // CBS설교 · 말씀과 함께
+  cathedral: 'J6IkJIGFFu0',  // cpbcTV 매일미사
+  cafe: 'MYPVQccHhAQ',       // Relaxing Jazz Piano · 카페 재즈
+  restaurant: 'yGzw1n5GudU', // 햄지 · 한식 백반
+  drivein: '',               // 맥스데이 라이프카드 영상 링크를 넣으면 지도 스크린에서 바로 재생 (비어 있으면 자체 홍보 영상)
 };

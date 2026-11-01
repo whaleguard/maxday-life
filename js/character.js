@@ -61,6 +61,8 @@ const POSES = {
   stand: {},
   chair: { pelvisY: 0.40, hip: -90, knee: 90, torso: 4, sh: 8, el: 25 },
   bench: { pelvisY: 0.41, hip: -90, knee: 90, torso: 3, sh: 6, el: 20 },
+  stool: { pelvisY: 0.74, hip: -85, knee: 75, torso: 4, sh: -25, el: 60 },
+  sofa: { pelvisY: 0.46, hip: -88, knee: 88, torso: -6, sh: 8, el: 25 },
   cushion: { pelvisY: 0.19, hip: -100, knee: 135, spread: 28, torso: 2, sh: 12, el: 45, shIn: 8 },
   palms: { sh: -55, shIn: 40, el: 95 },
   pray: { head: 18, torso: 8, sh: -40, shIn: 34, el: 102 },

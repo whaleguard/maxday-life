@@ -85,6 +85,9 @@ export class MqttAdapter extends Emitter {
   }
 
   // 방 목록: 공간의 모든 방 접속 인원 (retained 현재 상태 기준)
+  async resvList(store, date) { if (!this.ws || this.ws.readyState !== 1) await this._open(); const r = await this._req({ type: 'resvList', store, date }); return r.list || {}; }
+  async resvSave(rec) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'resvSave', rec }); }
+  async resvCancel(rec) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'resvCancel', rec: { ...rec, sid: this.sid } }); }
   async peekRooms(space) {
     if (!this.client || !this.connected) await this._connect();
     const counts = {}; const seen = new Set(); const pat = `${MQTT_NS}/r/${space}/+/p/+`;
@@ -101,6 +104,42 @@ export class MqttAdapter extends Emitter {
     this.client.removeListener('message', handler);
     try { if (!this.base || !this.base.startsWith(`${MQTT_NS}/r/${space}/`)) this.client.unsubscribe(pat); } catch (e) {}
     return counts;
+  }
+
+  /* ---- 카페·식당 예약 (retained = 공유 저장) ---- */
+  async resvList(store, date) {
+    if (!this.client || !this.connected) await this._connect();
+    const pat = `${MQTT_NS}/resv/${store}/${date}/+/+`; const out = {};
+    const handler = (topic, buf) => {
+      if (!topic.startsWith(`${MQTT_NS}/resv/${store}/${date}/`)) return;
+      const [time, table] = topic.split('/').slice(-2); const k = time + '|' + table; const s = buf.toString();
+      if (!s) { delete out[k]; return; }
+      try { out[k] = { ...JSON.parse(s), time, table }; } catch (e) {}
+    };
+    this.client.on('message', handler);
+    await new Promise(r => this.client.subscribe(pat, () => r()));
+    await new Promise(r => setTimeout(r, 1300));
+    this.client.removeListener('message', handler);
+    try { this.client.unsubscribe(pat); } catch (e) {}
+    return out;
+  }
+  async resvSave(rec, dur = 90) {
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const cur = await this.resvList(rec.store, rec.date);
+    if (Object.values(cur).some(r => r.table === rec.table && Math.abs(toMin(r.time) - toMin(rec.time)) < dur)) return { ok: false, reason: 'taken' };
+    const topic = `${MQTT_NS}/resv/${rec.store}/${rec.date}/${rec.time}/${rec.table}`;
+    this.client.publish(topic, JSON.stringify({ ...rec, sid: this.sid, t: now() }), { retain: true, qos: 1 });
+    await new Promise(r => setTimeout(r, 700));
+    const after = await this.resvList(rec.store, rec.date);
+    const mine = after[rec.time + '|' + rec.table];
+    if (!mine || mine.id !== rec.id) return { ok: false, reason: 'taken' };
+    return { ok: true };
+  }
+  async resvCancel(rec) {
+    if (!this.client || !this.connected) await this._connect();
+    this.client.publish(`${MQTT_NS}/resv/${rec.store}/${rec.date}/${rec.time}/${rec.table}`, '', { retain: true, qos: 1 });
+    await new Promise(r => setTimeout(r, 300));
+    return { ok: true };
   }
 
   // 방 고르기: 1번 방부터 정원(20명)이 찬 방은 건너뜀

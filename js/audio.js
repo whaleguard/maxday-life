@@ -123,6 +123,7 @@ export class SoundScape {
     else if (key === 'church') { this._room(0.05); this._songLoop(['silentNight', 'adeste', 'firstNoel'], 'celesta'); }
     else if (key === 'cathedral') { this._room(0.05); this._songLoop(['amazingGrace', 'hymnToJoy'], 'organ'); }
     else if (key === 'playground') { this._room(0.04); this._musicBox(); }
+    else if (key === 'cafe') { this._room(0.06); this._songLoop(['silentNight', 'hymnToJoy', 'firstNoel'], 'celesta'); }
     else if (key === 'garden') { this._wind(0.07); this._birds(); }
   }
 

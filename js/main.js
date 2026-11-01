@@ -1,10 +1,11 @@
 // 맥스데이 라이프 — 앱 진입점: 지도(입구) → 공간 입장, 3인칭 캐릭터 조작, 실시간 동기화, 공간 기능(염주·말씀·찬송·샵·12지신·기계)
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY } from './config.js';
+import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY , VIDEOS } from './config.js';
 import { createRenderer, Labels, disposeObject } from './engine.js';
 import { buildInterior } from './scenes.js';
-import { buildMap, MAP_SPOTS } from './world/map.js';
+import { buildMap, MAP_SPOTS, DRIVE_IN } from './world/map.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { Character, lookFromSid, OUTFITS } from './character.js';
 import { createNet, makeSid } from './net.js';
 import { SoundScape, SONG_LIST } from './audio.js';
@@ -12,6 +13,8 @@ import { openBible } from './features/bible.js';
 import { Beads } from './features/beads.js';
 import { ZODIAC, zodiacOfYear, todayWord } from './features/zodiac.js';
 import { CATALOG, Points, Owned, Wear, itemName, PAYMENT } from './features/shop.js';
+import { ReserveUI } from './features/reserve.js';
+import { STORES } from './features/stores.js';
 
 const $ = s => document.querySelector(s);
 const ss = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
@@ -33,7 +36,9 @@ window.__mdl = app;
 let renderer, labels, envTex;
 const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
 const clock = new THREE.Clock();
-let beads;
+let beads, reserve;
+const isStore = k => !!STORES[k];
+const roomWord = k => k === 'temple' ? '법당' : k === 'playground' ? '놀이방' : isStore(k) ? '매장' : '예배실';
 
 /* ---------------- 시작 ---------------- */
 function applyBrand() {
@@ -62,6 +67,7 @@ function boot() {
     onBead: n => { sound.beadClick(); if (n % 27 === 0) Points.add(2, '염주'); },
     onRound: r => { toast(`108염주 ${r}번째를 마쳤어요. 공덕 +15`); Points.add(15, '108염주'); },
   });
+  reserve = new ReserveUI({ net, toast, brand: BRAND, onChange: () => refreshTableTags() });
   Points.onChange = (v, d, why) => { $('#pts-n').textContent = v; if (d > 0 && why) pointPop(`+${d} ${why}`); };
   $('#pts-n').textContent = Points.get();
   showMap(true);
@@ -94,7 +100,7 @@ function showMap(first) {
   app.mode = 'map'; app.space = null; app.focus = null;
   document.body.className = 'mode-map' + (settings.reduce ? ' reduce' : '');
   $('#garden-ui').hidden = false; $('#room-ui').hidden = true; $('#spot-card').hidden = true;
-  const w = buildMap({ low: settings.low }); w.scene.environment = envTex; app.world = w;
+  const w = buildMap({ low: settings.low }); w.scene.environment = envTex; app.world = w; setTimeout(setupDriveInVideo, 0);
   collectBillboards();
   // 건물 위 이름 핀 (HTML)
   for (const key of SPACE_ORDER) {
@@ -108,7 +114,8 @@ function showMap(first) {
   onResize();
   if (!first) fade(false);
 }
-function mapHome() { const a = innerWidth / innerHeight; const k = a < 1 ? clamp(0.78 / a, 1, 1.7) : 1; return { pos: [MAP_HOME.pos[0], MAP_HOME.pos[1] * k * 0.9, MAP_HOME.pos[2] * k * 0.92], look: MAP_HOME.look }; }
+const mapPan = { x: 0, z: 0 };
+function mapHome() { const a = innerWidth / innerHeight; const k = a < 1 ? clamp(0.62 / a, 1, 1.35) : 1; return { pos: [MAP_HOME.pos[0] + mapPan.x, MAP_HOME.pos[1] * k * 0.9, MAP_HOME.pos[2] * k * 0.92 + mapPan.z], look: [MAP_HOME.look[0] + mapPan.x, MAP_HOME.look[1], MAP_HOME.look[2] + mapPan.z] }; }
 let camTween = null;
 function setCamTween(to, dur) {
   const from = { pos: app.cam.position.toArray(), look: app.camLook ? app.camLook.toArray() : to.look };
@@ -135,7 +142,8 @@ async function focusSpot(key) {
   document.body.classList.add('focused');
   const sp = SPACES[key], card = $('#spot-card');
   $('#sc-name').textContent = sp.name; $('#sc-desc').textContent = SPOT_DESC[key];
-  $('#sc-enter').textContent = sp.btn; $('#sc-enter').onclick = () => askName(key, 0);
+  $('#sc-enter').textContent = isStore(key) ? '들어가서 둘러보기' : sp.btn; $('#sc-enter').onclick = () => askName(key, 0);
+  $('#sc-resv').hidden = !isStore(key); $('#sc-resv').onclick = () => { openModal('resv'); reserve.open(key); };
   card.hidden = false; card.dataset.space = key;
   const list = $('#sc-rooms'); list.innerHTML = '<span class="muted small">방 목록을 불러오는 중…</span>';
   try {
@@ -146,7 +154,7 @@ async function focusSpot(key) {
     list.innerHTML = '';
     for (let n = 1; n <= Math.min(max + 1, 12); n++) {
       const c = counts[n] || 0; const b = document.createElement('button'); b.className = 'room-chip' + (c >= ROOM_CAPACITY ? ' full' : '');
-      b.innerHTML = `<b>${n}번 ${key === 'temple' ? '법당' : key === 'playground' ? '놀이방' : '예배실'}</b><span>${c}/${ROOM_CAPACITY}명</span>`;
+      b.innerHTML = `<b>${n}번 ${roomWord(key)}</b><span>${c}/${ROOM_CAPACITY}명</span>`;
       b.disabled = c >= ROOM_CAPACITY; b.onclick = () => askName(key, n); list.appendChild(b);
     }
   } catch (e) { list.innerHTML = '<span class="muted small">방 목록을 불러오지 못했어요. 입장하면 빈 방으로 자동 안내돼요.</span>'; }
@@ -156,6 +164,8 @@ const SPOT_DESC = {
   church: '언덕 위 따뜻한 예배당. 기도하기, 성경 말씀 검색, 찬송 듣기, 카페에서 쉬어가기.',
   cathedral: '광장의 석조 성당. 장의자에서 기도, 봉헌초 켜기, 성가 듣기, 성물방.',
   playground: '공원 놀이터. 운세·타로·게임 기계, 랜덤박스, 12지신 마당, 어린이 놀이방.',
+  cafe: '창가 바·소파석·홀·단체석이 있는 카페. 미리 둘러보고 원하는 자리를 골라 예약·주문까지.',
+  restaurant: '창가·홀·원탁·룸이 있는 한식당. 오픈 주방·셀프바를 둘러보고 자리 예약과 미리 주문.',
 };
 function unfocus() { app.focus = null; document.body.classList.remove('focused'); $('#spot-card').hidden = true; setCamTween(mapHome(), 1.3); }
 
@@ -226,7 +236,8 @@ async function enterSpace(key, name, roomHint) {
     console.warn('join failed', e);
     showLoading(TEXT.failed, true); app.busy = false; return; // 실패를 입장 완료로 처리하지 않음
   }
-  $('#room-no').textContent = `${app.room}번 ${key === 'temple' ? '법당' : key === 'playground' ? '놀이방' : '방'}`;
+  $('#room-no').textContent = `${app.room}번 ${roomWord(key)}`;
+  if (isStore(key)) refreshTableTags();
   updatePeopleCount(); hideLoading();
   sound.setSpace(SPACES[key].music);
   spawnNpcs();
@@ -302,11 +313,21 @@ function trySit(idx) {
   vacateNpc(idx);
   walkTo(s.approach, () => { if (me.pendingSeat === idx) sitDown(s); });
 }
+function lowerFor(s) { return s.type === 'cushion' ? 'cushion' : s.type === 'bench' ? 'bench' : s.type === 'stool' ? 'stool' : s.type === 'sofa' ? 'sofa' : 'chair'; }
+// 3D 매장 안 '예약석' 팻말: 지금부터 90분 안에 예약된 테이블
+async function refreshTableTags() {
+  const w = app.world; if (!w || !w.props?.tables || !isStore(app.space)) return;
+  const d = new Date(); const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; const nowM = d.getHours() * 60 + d.getMinutes();
+  let list = {}; try { list = await withTimeout(net.resvList(app.space, date), 8000); } catch (e) { return; }
+  if (app.world !== w) return;
+  const busy = new Set(Object.values(list).filter(r => { const [h, mm] = r.time.split(':').map(Number); const t = h * 60 + mm; return t - nowM < 90 && nowM - t < 90; }).map(r => r.table));
+  w.props.tables.forEach(t => { t.tag.visible = busy.has(t.id); });
+}
 function sitDown(s) {
   const me = app.me;
   me.pendingSeat = -1; me.seat = s.idx; me.x = s.x; me.z = s.z; me.ry = s.ry;
   me.char.walking = false;
-  me.char.setLower(s.type === 'cushion' ? 'cushion' : s.type === 'bench' ? 'bench' : 'chair'); me.char.setUpper(null);
+  me.char.setLower(lowerFor(s)); me.char.setUpper(null);
   me.act = 'sit';
   if (s.zone === 'main') app.view.yawTarget = 0; // 앉으면 정면(불단·강단·제대)을 보도록
   publish(); renderActions(); highlightSeats(false);
@@ -355,7 +376,7 @@ function doAction(a) {
       break;
     case 'drink': {
       if (me.act === 'drink') return;
-      const ax = ANNEX[app.space]; const sec = ax?.drinkSec || 3;
+      const ax = ANNEX[app.space]; const sec = ax?.drinkSec || (app.space === 'restaurant' ? 4 : 3);
       me.act = 'drink'; me.char.setUpper('drink');
       clearTimeout(me.drinkTimer);
       me.drinkTimer = setTimeout(() => { if (me.act === 'drink') { me.act = 'sit'; me.char.setUpper(null); me.char.smile(2); publish(); renderActions(); } }, sec * 1000);
@@ -367,6 +388,8 @@ function doAction(a) {
     case 'bible': goFeature('lectern', () => openBibleModal()); return;
     case 'hymn': goFeature('hymn', () => openHymns()); return;
     case 'shop': goFeature('shop', () => openShop()); return;
+    case 'resv': openModal('resv'); reserve.open(app.space); return;
+    case 'mine': openModal('resv'); reserve.open(app.space, { tab: 'mine' }); return;
   }
   publish(); renderActions();
 }
@@ -384,6 +407,12 @@ function renderActions() {
   const B = (label, a, cls = '') => { const b = document.createElement('button'); b.className = 'act ' + cls; b.textContent = label; b.onclick = () => doAction(a); box.appendChild(b); return b; };
   const seat = seatById(me.seat);
   if (me.act === 'walk') { hint.textContent = '이동 중이에요.'; B('이동 취소', 'cancel', 'sub'); return; }
+  if (isStore(app.space)) {
+    if (me.seat < 0) { hint.textContent = '둘러보고 마음에 드는 테이블을 누르면 그 자리로 예약할 수 있어요.'; B('자리 예약', 'resv'); B('메뉴·미리 주문', 'resv'); B('내 예약', 'mine', 'sub'); return; }
+    const lbl = app.space === 'cafe' ? '커피 마시기' : '식사하기';
+    B(me.act === 'drink' ? (app.space === 'cafe' ? '마시는 중…' : '식사 중…') : lbl, 'drink', me.act === 'drink' ? 'on' : '').disabled = me.act === 'drink';
+    B('이 자리 예약', 'resv'); B('일어나기', 'stand', 'sub'); return;
+  }
   if (me.seat < 0) {
     const hints = { temple: '빈 방석을 눌러 앉으세요. 화면을 끌면 둘러볼 수 있어요.', church: '빈 의자를 눌러 앉으세요. 말씀대·찬송대·서점도 눌러 보세요.', cathedral: '장의자에 앉거나 봉헌초를 켜 보세요.', playground: '기계·랜덤박스·12지신 석상을 눌러 보세요.' };
     hint.textContent = hints[app.space] || '';
@@ -456,6 +485,40 @@ function openProgram(prog) {
   const f = $('#prog-frame'); $('#prog-loading').hidden = false;
   f.onload = () => { $('#prog-loading').hidden = true; };
   f.src = url; openModal('program');
+}
+// 영상 스크린: 유튜브 링크를 넣으면 재생 (브랜드 설정 BRAND.videos 또는 이 기기에서 붙여넣기)
+const VIDEO_TITLE = { church: '예배·설교 영상', cathedral: '미사 영상', cafe: '카페 영상', restaurant: '식당 영상', drivein: '자동차 극장 · 광고' };
+const VIDEO_SEARCH = { church: '주일예배 설교', cathedral: '매일미사', cafe: '카페 브이로그', restaurant: '한식당', drivein: '광고' };
+function ytId(s) { s = (s || '').trim(); const m = s.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/); return m ? m[1] : /^[\w-]{11}$/.test(s) ? s : ''; }
+function openVideo(kind) {
+  const key = 'mdl_video_' + (BRAND.short || '') + '_' + kind;
+  const id = ytId(ls.get(key) || (BRAND.videos || {})[kind] || VIDEOS[kind] || '');
+  $('#vd-title').textContent = VIDEO_TITLE[kind] || '영상';
+  const frame = $('#vd-frame'), empty = $('#vd-empty');
+  if (id) { frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1`; frame.hidden = false; empty.hidden = true; }
+  else { frame.src = 'about:blank'; frame.hidden = true; empty.hidden = false; }
+  $('#vd-search').href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(VIDEO_SEARCH[kind] || '');
+  $('#vd-save').onclick = () => { const v = ytId($('#vd-url').value); if (!v) { toast('유튜브 영상 링크를 붙여넣어 주세요.'); return; } ls.set(key, v); openVideo(kind); if (kind === 'drivein') setupDriveInVideo(); };
+  $('#vd-url').value = '';
+  $('#vd-reset').hidden = !ls.get(key); $('#vd-reset').onclick = () => { ls.set(key, ''); openVideo(kind); if (kind === 'drivein') setupDriveInVideo(); };
+  openModal('video');
+}
+// 지도 자동차 극장: 유튜브 링크가 있으면 접속하자마자 스크린에서 바로(소리 끔) 재생
+let driveCss = null;
+function setupDriveInVideo() {
+  const id = ytId(ls.get('mdl_video_' + (BRAND.short || '') + '_drivein') || (BRAND.videos || {}).drivein || VIDEOS.drivein || '');
+  if (driveCss) { driveCss.r.domElement.remove(); driveCss = null; }
+  if (!id || !DRIVE_IN.mesh || settings.low) return;
+  const r = new CSS3DRenderer(); r.setSize(innerWidth, innerHeight);
+  Object.assign(r.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '1' });
+  document.body.insertBefore(r.domElement, $('#labels'));
+  const div = document.createElement('div'); div.style.width = '1100px'; div.style.height = '600px'; div.style.background = '#000'; div.style.pointerEvents = 'none';
+  const f = document.createElement('iframe'); f.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&playsinline=1&rel=0&modestbranding=1`;
+  f.allow = 'autoplay; encrypted-media'; Object.assign(f.style, { width: '100%', height: '100%', border: '0', pointerEvents: 'none' }); div.appendChild(f);
+  const o = new CSS3DObject(div); DRIVE_IN.mesh.updateWorldMatrix(true, false); DRIVE_IN.mesh.matrixWorld.decompose(o.position, o.quaternion, new THREE.Vector3()); o.scale.setScalar(0.01);
+  const scene = new THREE.Scene(); scene.add(o);
+  driveCss = { r, scene };
+  addEventListener('resize', () => r.setSize(innerWidth, innerHeight));
 }
 function openBibleModal() { openModal('bible'); openBible().catch(e => { console.error(e); $('#bb-out').innerHTML = '<p class="muted">말씀을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>'; }); if (app.me) { app.me.char.setUpper('read'); app.me.act = app.me.seat >= 0 ? 'sit' : 'stand'; } }
 function openHymns() {
@@ -603,7 +666,7 @@ function onPeer(sid, st) {
     const sitting = seat && SITTING.includes(st.act);
     if (sitting) { p.x = seat.x; p.z = seat.z; p.ry = seat.ry; }
     else if (inside(st.x, st.z)) { if (Math.hypot(p.x - st.x, p.z - st.z) > 0.05) { p.path = [[st.x, st.z]]; p.char.walking = Math.hypot(p.x - st.x, p.z - st.z) > 0.3; p.endRy = st.ry; } else p.ry = st.ry; }
-    p.char.setLower(sitting ? (seat.type === 'cushion' ? 'cushion' : seat.type === 'bench' ? 'bench' : 'chair') : 'stand');
+    p.char.setLower(sitting ? lowerFor(seat) : 'stand');
     const up = { pray: 'pray', palms: 'palms', drink: 'drink', machine: 'use', candle: 'use', beads: 'beads' }[st.act] || null;
     if (st.act === 'bow' && p.act !== 'bow' && !p.char.bowing) p.char.startBow();
     if (st.act !== 'bow') p.char.setUpper(up);
@@ -633,7 +696,7 @@ function spawnNpcs() {
     const id = 'npc' + i; const look = lookFromSid('npc-' + key + i, key);
     const ch = new Character(look, { reducedMotion: settings.reduce });
     const n = { id, char: ch, seat: s.idx, x: s.x, z: s.z, ry: s.ry, t: Math.random() * 8, act: 'sit' };
-    ch.setLower(s.type === 'cushion' ? 'cushion' : s.type === 'bench' ? 'bench' : 'chair');
+    ch.setLower(lowerFor(s));
     ch.root.position.set(s.x, 0, s.z); ch.root.rotation.y = s.ry; app.world.scene.add(ch.root);
     labels.add(id, NAME_ADJ[(i * 5 + 3) % 12] + ' ' + NAME_NOUN[(i * 7 + 2) % 12] + ' · 체험', 'npc'); labels.bind(id, ch.root, 1.72);
     app.npcs.push(n);
@@ -644,14 +707,14 @@ function vacateNpc(idx) {
   const cand = app.world.seats.filter(s => !seatOwner(s.idx) && !app.npcs.some(o => o.seat === s.idx) && s.idx !== app.me?.pendingSeat && s.idx !== app.me?.seat);
   if (!cand.length) { n.char.dispose(); labels.remove(n.id); app.npcs = app.npcs.filter(x => x !== n); return; }
   const s = cand[Math.floor(Math.random() * cand.length)]; n.seat = s.idx; n.x = s.x; n.z = s.z; n.ry = s.ry; n.char.bow = null;
-  n.char.setLower(s.type === 'cushion' ? 'cushion' : s.type === 'bench' ? 'bench' : 'chair');
+  n.char.setLower(lowerFor(s));
 }
 function updateNpcs(dt, t) {
   for (const n of app.npcs) {
     n.t -= dt;
     if (n.t < 0) {
       n.t = 6 + Math.random() * 10; const s = seatById(n.seat);
-      if (s && s.zone === 'annex') n.char.setUpper(n.char.upper === 'drink' ? null : 'drink');
+      if (s && (s.zone === 'annex' || s.zone === 'dine')) n.char.setUpper(n.char.upper === 'drink' ? null : 'drink');
       else if (app.space === 'temple') { const r = Math.random(); if (r < 0.3 && !n.char.bowing) n.char.startBow(); else n.char.setUpper(r < 0.65 ? 'palms' : r < 0.8 ? 'beads' : null); }
       else if (app.space === 'church' || app.space === 'cathedral') n.char.setUpper(Math.random() < 0.6 ? 'pray' : null);
     }
@@ -673,7 +736,7 @@ function setLocked(on) { app.locked = on; document.body.classList.toggle('locked
 const ptrs = new Map(); let gesture = null;
 function onPointerDown(e) {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (ptrs.size === 1) gesture = { x0: e.clientX, y0: e.clientY, moved: false, yaw: app.view.yaw, pitch: app.view.pitch };
+  if (ptrs.size === 1) gesture = { x0: e.clientX, y0: e.clientY, moved: false, yaw: app.view.yaw, pitch: app.view.pitch, px: mapPan.x, pz: mapPan.z };
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; gesture = { pinch: Math.hypot(a.x - b.x, a.y - b.y), dist: app.view.dist, moved: true }; }
 }
 function onPointerMove(e) {
@@ -683,6 +746,7 @@ function onPointerMove(e) {
   if (gesture.pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); app.view.dist = clamp(gesture.dist * gesture.pinch / d, 3.2, 13); return; }
   const dx = e.clientX - gesture.x0, dy = e.clientY - gesture.y0;
   if (Math.hypot(dx, dy) > 10) gesture.moved = true;
+  if (gesture.moved && app.mode === 'map' && !app.focus && !camTween) { const k = 0.09; mapPan.x = clamp(gesture.px - dx * k, -42, 42); mapPan.z = clamp(gesture.pz - dy * k, -18, 14); app.mapUser = true; setCamTween(mapHome(), 0); return; }
   if (gesture.moved && app.mode === 'interior') { app.view.yaw = clamp(gesture.yaw - dx * 0.006, -1.3, 1.3); app.view.pitch = clamp(gesture.pitch + dy * 0.004, 0.12, 0.95); app.view.yawTarget = undefined; }
 }
 function onPointerUp(e) {
@@ -703,6 +767,7 @@ function handleTap(x, y) {
   if (!app.world || app.busy) return;
   if (app.mode === 'map') {
     const hit = pick(x, y, app.world.clickables)[0];
+    if (hit && findUp(hit.object, 'screen')) { openVideo('drivein'); return; }
     if (hit) { const b = findUp(hit.object, 'space'); if (b) { if (app.focus === b.userData.space) askName(b.userData.space, 0); else focusSpot(b.userData.space); } }
     return;
   }
@@ -713,6 +778,8 @@ function handleTap(x, y) {
   for (const h of hits) {
     const seatO = findUp(h.object, 'seatIdx'); if (seatO) { trySit(seatO.userData.seatIdx); return; }
     const cand = findUp(h.object, 'candleIdx'); if (cand) { tryCandle(cand.userData.candleIdx); return; }
+    const scn = findUp(h.object, 'screen'); if (scn) { openVideo(scn.userData.screen); return; }
+    const tb = findUp(h.object, 'tableId'); if (tb) { openModal('resv'); reserve.open(app.space, { table: tb.userData.tableId }); return; }
     const z = findUp(h.object, 'zodiac'); if (z) { useObject(z); return; }
     const f = findUp(h.object, 'feature'); if (f) { useObject(f); return; }
     const m = findUp(h.object, 'machine'); if (m) { useObject(m); return; }
@@ -785,6 +852,7 @@ function openModal(k) { const m = $('#modal-' + k); if (!m) return; m.hidden = f
 function closeModal(k) {
   const m = $('#modal-' + k); if (!m) return; m.hidden = true; openModals.delete(k);
   if (k === 'program') { $('#prog-frame').src = 'about:blank'; endMachine(); }
+  if (k === 'video') { $('#vd-frame').src = 'about:blank'; }
   if (k === 'gacha') endMachine();
   if (k === 'sound') syncSoundUI();
   if (k === 'bible' && app.me) { app.me.char.setUpper(null); }
@@ -863,10 +931,11 @@ function loop() {
     updateFollowCam(dt);
   } else {
     w.update(t, settings.reduce, dt); updateCamTween(Math.min(rawDt, 0.25));
-    if (!camTween && !app.focus && !settings.reduce) { const h = mapHome(); app.cam.position.x = h.pos[0] + Math.sin(t * 0.08) * 4; app.cam.lookAt(app.camLook); }
+    if (!camTween && !app.focus && !settings.reduce && !app.mapUser) { const h = mapHome(); app.cam.position.x = h.pos[0] + Math.sin(t * 0.08) * 4; app.cam.lookAt(app.camLook); }
   }
   updateBillboards();
   renderer.render(w.scene, app.cam);
+  if (driveCss) { const on = app.mode === 'map'; driveCss.r.domElement.style.display = on ? '' : 'none'; if (on) driveCss.r.render(driveCss.scene, app.cam); }
   labels.update(app.cam, innerWidth, innerHeight, SID);
   fpsAcc += dt; fpsN++; if (fpsAcc > 1) { app.fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
 }
