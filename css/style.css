@@ -291,3 +291,26 @@ body.focused .nametag.pin{opacity:.0;pointer-events:none}
 .vd-empty{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:24px;max-width:560px;margin:0 auto;gap:6px}
 .vd-empty a{color:#7a5a1a}
 @media (max-width:639px){ .video-sheet{width:100vw;max-height:100dvh} }
+
+/* v3 — 먹거리 골목 부스 · 매대 명단 */
+.booth-sheet{width:min(460px,calc(100vw - 32px))}
+.bt-head{display:flex;gap:12px;align-items:center}
+.bt-no{flex:none;width:44px;height:44px;border-radius:999px;background:#F07A1A;color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center}
+.bt-no.mk{background:#E8B21C}
+.bt-menu{list-style:none;margin:12px 0;padding:0;border-top:1px solid #e6dccb}
+.bt-menu li{display:flex;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid #eee4d4;font-size:15px}
+.bt-menu b{color:#a0480f;white-space:nowrap}
+.bt-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.bt-btns .btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.booths-sheet{width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto}
+.bl-map{width:100%;max-width:360px;display:block;margin:6px auto 10px;border-radius:12px}
+.booths-sheet h3{margin:14px 0 8px;font-size:15px}
+.bl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:8px}
+.bl-item{display:flex;gap:10px;align-items:center;text-align:left;padding:10px;border:1px solid #e6dccb;border-radius:12px;background:#fff;cursor:pointer;font:inherit;color:inherit}
+.bl-item:hover{background:#fff6ec}
+.bl-item i{flex:none;font-style:normal;width:30px;height:30px;border-radius:999px;background:#F07A1A;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+.bl-item.mk i{background:#E8B21C}
+.bl-item b{display:block;font-size:14px}.bl-item small{display:block;font-size:12px;color:#7a6a5a}
+@media (min-width:1280px){ .enter-grid.n8{grid-template-columns:repeat(8,minmax(0,1fr));width:min(1400px,calc(100vw - 32px))} .enter-grid.n7{grid-template-columns:repeat(7,minmax(0,1fr));width:min(1300px,calc(100vw - 32px))} .enter-grid.n8 .enter-btn .n{font-size:15px} }
+@media (max-width:1279px){ .enter-grid.n8,.enter-grid.n7{grid-template-columns:repeat(4,minmax(0,1fr));width:min(820px,calc(100vw - 32px))} }
+@media (max-width:639px){ .enter-grid.n8,.enter-grid.n7{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px} .enter-grid.n8 .enter-btn,.enter-grid.n7 .enter-btn{height:54px} .enter-grid.n8 .enter-btn .n,.enter-grid.n7 .enter-btn .n{font-size:12px} }
