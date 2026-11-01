@@ -235,3 +235,8 @@ body.focused .nametag.pin{opacity:.0;pointer-events:none}
 }
 .bb-nav #bb-book{flex:2 1 120px}.bb-nav #bb-ch{flex:1 1 80px}
 @media (max-width:639px){ .bb-nav #bb-today{flex:1 1 100%} }
+
+/* 로고 비율이 거래처마다 달라서 높이 기준으로 맞춤 */
+.logo-card{width:auto;max-width:300px;display:flex;justify-content:center}
+.logo-card img{width:auto;max-width:276px;max-height:118px}
+@media (max-width:639px){ .logo-card{max-width:240px} .logo-card img{max-width:216px;max-height:92px} }
