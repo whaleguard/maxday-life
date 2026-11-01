@@ -1,0 +1,213 @@
+// 맥스데이 라이프 — 디자인 기준 v1.1 (GPT 확정) + v1.2 추가(놀이터·기계·트리·다도실/카페)
+// 단위: m, Y 위쪽, 내부는 방 중심 바닥 (0,0,0), 중심 시설은 −Z
+
+export const BRAND = { ko: '맥스데이 라이프', en: 'MAX DAY LIFE' };
+
+export const COLORS = { base: '#15272B', panel: '#F4F0E7', accent: '#C9AE73', ink: '#233335' };
+
+export const DEMO_URL = 'https://mapinlife.store/demo/?p=';
+
+// 키오스크 프로그램 (mapinlife.store/demo 코드)
+export const PROGRAMS = {
+  unse: { name: '운세향', sub: '띠 · 별자리 · 이달 총운', kind: 'fortune' },
+  lucky: { name: '오늘의 행운 뽑기', sub: '제비뽑기 · 포춘쿠키 · 이달의 꽃', kind: 'fortune' },
+  tarot: { name: '별빛 타로', sub: '카드 세 장이 들려주는 오늘의 이야기', kind: 'fortune' },
+  seonnyeo: { name: '운세 뽑는 선녀', sub: '복주머니에서 뽑는 열두 가지 운', kind: 'fortune' },
+  raon: { name: '라온선녀의 운세', sub: '열두 가지 운을 하나씩 깊이', kind: 'fortune' },
+  gwansang: { name: '나읽기', sub: '사주와 얼굴로 나를 읽다', kind: 'fortune' },
+  seven: { name: '7초를 잡아라!', sub: '7.777초에 멈추면 행운이', kind: 'game' },
+  arcade: { name: '터치 챌린지', sub: '기억력·두더지·순발력 랭킹 도전', kind: 'game' },
+  iq: { name: 'IQ 퍼즐 챌린지', sub: '도형·수열·성냥개비 10문제', kind: 'game' },
+  fairytale: { name: '동화 키오스크', sub: '우리 아이가 주인공인 동화책', kind: 'kids' },
+  engword: { name: '영어 단어 퀴즈', sub: '그림 보고 영어 단어 맞히기', kind: 'kids' },
+  spelling: { name: '받아쓰기·맞춤법', sub: '맞춤법 10문제, 달인 상장', kind: 'kids' },
+  funtest: { name: '재미 테스트', sub: '3분이면 나를 알아요', kind: 'kids' },
+  gacha: { name: '랜덤박스', sub: '무료 행운 소품 뽑기', kind: 'gacha' },
+};
+
+export const SPACES = {
+  temple: {
+    key: 'temple', name: '맥스데이사', desc: '불교 법당', btn: '절로 가기', short: '절',
+    room: { w: 14, d: 16, h: 6.6 },
+    floor: '#846044', wall: '#D8C7A6', ceil: '#624735',
+    sun: ['#FFD9A3', 1.8], amb: ['#D7C3A6', 0.75], spawn: [0, 0, 6.8],
+    seatType: 'cushion', seatColor: '#9A8160',
+    seatX: [-2.5, -1.2, 1.2, 2.5], seatZ: [-1.8, -0.2, 1.4, 3.0, 4.6],
+    actions: ['palms', 'bow'], outfit: 'robe', music: 'temple',
+  },
+  church: {
+    key: 'church', name: '맥스데이교회', desc: '개신교 예배당', btn: '교회로 가기', short: '교회',
+    room: { w: 14, d: 18, h: 7 },
+    floor: '#A58664', wall: '#EEE6D5', ceil: '#D9CBB7',
+    sun: ['#FFF0CF', 2.0], amb: ['#E8DDC6', 0.85], spawn: [0, 0, 7.8],
+    seatType: 'chair', seatColor: '#89664A',
+    seatX: [-2.6, -1.3, 1.3, 2.6], seatZ: [-2.8, -0.9, 1.0, 2.9, 4.8],
+    actions: ['pray'], outfit: 'casual', music: 'church',
+  },
+  cathedral: {
+    key: 'cathedral', name: '맥스데이성당', desc: '천주교 성당', btn: '성당으로 가기', short: '성당',
+    room: { w: 16, d: 20, h: 9 },
+    floor: '#B8B3A8', wall: '#CFC7B8', ceil: '#AFA99E',
+    sun: ['#E2E8FF', 1.6], amb: ['#BFC9DC', 0.8], spawn: [0, 0, 8.8],
+    seatType: 'pew', seatColor: '#73563F',
+    seatX: [-2.7, -1.3, 1.3, 2.7], seatZ: [-3, -1, 1, 3, 5],
+    actions: ['pray'], outfit: 'casual', music: 'cathedral',
+    candles: { table: [5.8, 0, 6.3], size: [1.8, 0.9, 0.8], rows: 4, cols: 6, dx: 0.26, dz: 0.18, access: [4.5, 0, 6.3], ttlMin: 10 },
+  },
+  playground: {
+    key: 'playground', name: '맥스데이 놀이터', desc: '운세·뽑기·놀이방', btn: '놀이터로 가기', short: '놀이터',
+    room: { w: 24, d: 22, h: 5.5 },
+    floor: '#DCCFB8', aisle: '#EEE5D5', wall: '#F2E8D7', ceil: '#E4D8C2',
+    sun: ['#FFF0D0', 2.0], amb: ['#DCE8E3', 0.9], spawn: [0, 0, 9.5],
+    seatType: 'bench', seatColor: '#A17C58',
+    actions: [], outfit: 'casual', music: 'playground',
+  },
+};
+
+export const SPACE_ORDER = ['temple', 'church', 'cathedral', 'playground'];
+
+export const ROOM_CAPACITY = 20;
+
+export const CHARACTER = {
+  skin: ['#DDB18D', '#F0CCAA', '#AE7959'],
+  hair: '#493B35',
+  robe: [['#909D9E', '#736653'], ['#B7A58C', '#736653']],
+  casual: [['#D2B887', '#5C6570'], ['#8FA89B', '#626057'], ['#B3939C', '#555F72']],
+  walkSpeed: 1.6,
+};
+
+// 손님 이름 (GPT v1.1)
+export const NAME_ADJ = ['고요한', '따뜻한', '잔잔한', '포근한', '맑은', '은은한', '다정한', '온화한', '느긋한', '부드러운', '편안한', '반짝이는'];
+export const NAME_NOUN = ['등불', '바람', '구름', '나무', '이슬', '별빛', '물결', '햇살', '달빛', '풀잎', '숲', '샘물'];
+
+export const TEXT = {
+  loading: '조용한 공간을 준비하고 있어요.',
+  joining: '자리를 살펴보고 있어요.',
+  reconnecting: '연결이 잠시 끊겼어요. 다시 연결하고 있어요.',
+  failed: '연결하지 못했어요. 다시 시도해 주세요.',
+  full: '이 공간의 자리가 모두 찼어요. 다른 방을 안내해 드릴게요.',
+  taken: '다른 분이 먼저 앉으셨어요. 다른 자리를 골라주세요.',
+};
+
+// 실시간 연결 설정
+// 1) 자체 서버(권장, 서버 권한 판정): ?server=wss://도메인/ws 또는 아래 WS_SERVER 값
+// 2) 서버가 없으면 공개 MQTT 중계(테스트용, 브로커 순서 기준 판정)
+export const WS_SERVER = '';
+export const MQTT_BROKERS = [
+  'wss://broker.emqx.io:8084/mqtt',
+  'wss://broker.hivemq.com:8884/mqtt',
+  'wss://test.mosquitto.org:8081',
+];
+export const MQTT_NS = 'maxdaylife/v1';
+
+// v1.2 — 정원 4번째 갈래 + 정원 기계
+export const GARDEN = {
+  ground: [40, 36], groundColor: '#586951', path: '#C8B79D', pathEdge: '#8A8879',
+  sky: ['#29364F', '#956F82', '#E8BC94'], fog: ['#B6A0A0', 38, 75],
+  sun: ['#FFE0B0', 2.4, [-12, 18, 10]], amb: ['#B8C7DE', 0.8],
+  cam: { pos: [0, 23, 34], look: [0, 1, 1], minHalf: 14, wideHalf: 20 },
+  buildings: {
+    temple: { c: [-10, -3], size: [6.8, 7, 5.4] },
+    church: { c: [0, -5], size: [6, 8, 7] },
+    cathedral: { c: [10, -3], size: [6.8, 8, 8.6] },
+    playground: { c: [12, 9], size: [8, 8, 4.6] },
+  },
+  trees: [[-15, 6], [-15, -7], [-6, -10], [6, -11], [15, -7], [18, 5], [-6, 10], [5, 16]],
+  machines: [
+    { prog: 'unse', x: -3.8, z: 9, color: '#B99BCB' },
+    { prog: 'lucky', x: -3.8, z: 12, color: '#E6C46D' },
+    { prog: 'tarot', x: 3.8, z: 9, color: '#9496D4' },
+    { prog: 'seonnyeo', x: 3.8, z: 12, color: '#87BDB5' },
+  ],
+};
+
+export const BUTTON_STYLE = {
+  temple: { bg: '#E7DDC9', fg: '#354A3D', bd: '#A59B7C', hv: '#D9CCB0' },
+  church: { bg: '#DFE9E4', fg: '#31524C', bd: '#8FA99F', hv: '#CBDDD4' },
+  cathedral: { bg: '#E4E4EE', fg: '#414A68', bd: '#999FB6', hv: '#D1D4E5' },
+  playground: { bg: '#F2DFC1', fg: '#684C32', bd: '#C6A073', hv: '#E9CFA9' },
+};
+
+// v1.2 — 놀이터 내부
+export const PLAYGROUND = {
+  machines: [
+    { prog: 'unse', x: -8, z: -8.8, face: 0, color: '#B99BCB' },
+    { prog: 'lucky', x: -4.8, z: -8.8, face: 0, color: '#E6C46D' },
+    { prog: 'tarot', x: -1.6, z: -8.8, face: 0, color: '#9496D4' },
+    { prog: 'seonnyeo', x: 1.6, z: -8.8, face: 0, color: '#87BDB5' },
+    { prog: 'raon', x: 4.8, z: -8.8, face: 0, color: '#DDA7B7' },
+    { prog: 'gwansang', x: 8, z: -8.8, face: 0, color: '#9DB3CD' },
+    { prog: 'seven', x: -10.3, z: -3.5, face: 1, color: '#E9A26D' },
+    { prog: 'arcade', x: -10.3, z: 0, face: 1, color: '#78B8BD' },
+    { prog: 'iq', x: -10.3, z: 3.5, face: 1, color: '#ACA0D2' },
+    { prog: 'gacha', id: 'gachaA', x: 10.3, z: -7, face: -1, color: '#D98C7D', type: 'gacha' },
+    { prog: 'gacha', id: 'gachaB', x: 10.3, z: -4, face: -1, color: '#78B7AD', type: 'gacha' },
+    { prog: 'fairytale', x: 3.5, z: 0.5, face: 0, color: '#E7B88A', type: 'kids' },
+    { prog: 'engword', x: 5.5, z: 0.5, face: 0, color: '#8DBDD7', type: 'kids' },
+    { prog: 'spelling', x: 7.5, z: 0.5, face: 0, color: '#A2C89B', type: 'kids' },
+    { prog: 'funtest', x: 9.5, z: 0.5, face: 0, color: '#D7A7CA', type: 'kids' },
+  ],
+  mat: { c: [6.5, 3.5], size: [9, 10], colors: ['#F1CE79', '#A8D6CA', '#B8D4EB', '#E8B8C5'] },
+  fence: '#EADFC7',
+  benches: [[-5.5, 2], [-5.5, 5], [-5.5, 8]],
+};
+export const TEMPLE_MACHINE = { prog: 'lucky', x: -5.5, z: 6.4, face: 0, color: '#E6C46D' };
+
+export const XMAS_TREE = {
+  church: { x: -5.3, z: -6.3, h: 2.8, r: 0.85, balls: 12, ballR: 0.055, star: 0.28, lights: 16 },
+  cathedral: { x: 5.7, z: -6.8, h: 3.4, r: 1.0, balls: 18, ballR: 0.065, star: 0.34, lights: 24 },
+  leaf: ['#315D4C', '#42735B', '#56836A'], trunk: '#70523B', pot: '#B39A76',
+  deco: ['#DDBB68', '#F3E6C5', '#AC625A'], bulb: '#FFE0A0',
+};
+
+// v1.2 — 무료 랜덤박스
+export const GACHA = {
+  tiers: [
+    { key: 'common', name: '일반', p: 0.60, color: '#A6B7AD' },
+    { key: 'special', name: '특별', p: 0.25, color: '#78B7C2' },
+    { key: 'rare', name: '희귀', p: 0.12, color: '#AE91CD' },
+    { key: 'legend', name: '전설', p: 0.03, color: '#DBB65F' },
+  ],
+  items: [
+    { id: 'sprout', tier: 'common', name: '새싹 머리핀', c: ['#8DB776'] },
+    { id: 'acorn', tier: 'common', name: '도토리 모자', c: ['#B58A5B'] },
+    { id: 'flower', tier: 'common', name: '하얀 꽃핀', c: ['#F4EEDC', '#E3BD67'] },
+    { id: 'beret', tier: 'special', name: '포근한 베레모', c: ['#BA8F90'] },
+    { id: 'bunny', tier: 'special', name: '토끼 귀', c: ['#EDE2CC', '#D9ADAB'] },
+    { id: 'cloud', tier: 'special', name: '구름 모자', c: ['#DCE8ED'] },
+    { id: 'moon', tier: 'rare', name: '초승달 장식', c: ['#E8C879'] },
+    { id: 'antenna', tier: 'rare', name: '별 안테나', c: ['#BDA1DB', '#F2D383'] },
+    { id: 'planet', tier: 'rare', name: '작은 행성', c: ['#8DB8C9', '#E5CCA0'] },
+    { id: 'crown', tier: 'legend', name: '금빛 왕관', c: ['#DAB45E', '#7BAEB0'] },
+    { id: 'ribbon', tier: 'legend', name: '오로라 리본', c: ['#8BCBC1', '#B7A0D8'] },
+    { id: 'tiara', tier: 'legend', name: '은하 티아라', c: ['#A9BAD8', '#E9D49A'] },
+  ],
+  animSec: 2, cooldownSec: 3,
+};
+
+// v1.3 — 다도실(절) / 카페 코너(교회·성당): 같은 내부 공간의 옆 구역 (휴게 좌석은 정원 20명과 별도)
+export const ANNEX = {
+  temple: {
+    kind: 'tea', name: '다도실', side: 1, x0: 7, x1: 13, floor: '#B39772', wall: '#E0D1B7', wood: '#826245', border: '#8C7152',
+    light: ['#FFDDB0', 0.45, [10, 3, 0]], camX: 3, minW: 24,
+    tables: [[10, -2.5], [10, 2]], table: { w: 1.6, d: 1.0, h: 0.32, round: false },
+    seatOffsets: [[-1.2, 0], [1.2, 0], [0, -1.05], [0, 1.05]], seat: { type: 'cushion', size: 0.65, color: '#8D9A7A' },
+    cabinet: { c: [10, -6.4], size: [2.4, 0.6, 0.85], color: '#806044' },
+    plants: [[12, 5.8], [12, -6.5]], action: 'tea', actionLabel: '차 마시기', drinkSec: 3.2,
+  },
+  church: {
+    kind: 'cafe', name: '카페', side: 1, x0: 7, x1: 13, floor: '#CCB699', wall: '#EFE4D2', wood: '#947252', border: '#AC957A',
+    light: ['#FFE8C5', 0.4, [10, 3, 0]], camX: 3, minW: 24,
+    tables: [[10, -4], [10, 0], [10, 4]], table: { r: 0.5, h: 0.68, round: true },
+    seatOffsets: [[-1.15, 0], [1.15, 0]], seat: { type: 'chair', w: 0.55, d: 0.55, h: 0.36, color: '#9A785A' },
+    counter: { c: [10, -7.4], size: [3.6, 0.75, 0.9] }, plants: [[12, 6.8], [12, -7.5]], action: 'coffee', actionLabel: '커피 마시기', drinkSec: 2.8,
+  },
+  cathedral: {
+    kind: 'cafe', name: '카페', side: -1, x0: -14, x1: -8, floor: '#D6C8B7', wall: '#EBE2D6', wood: '#947252', border: '#AC957A',
+    light: ['#FFE8C5', 0.4, [-11, 3, 0]], camX: -3, minW: 26,
+    tables: [[-11, -4], [-11, 0], [-11, 4]], table: { r: 0.5, h: 0.68, round: true },
+    seatOffsets: [[-1.15, 0], [1.15, 0]], seat: { type: 'chair', w: 0.55, d: 0.55, h: 0.36, color: '#9A785A' },
+    counter: { c: [-11, -8.4], size: [3.6, 0.75, 0.9] }, plants: [[-13, 7.8], [-13, -8.5]], action: 'coffee', actionLabel: '커피 마시기', drinkSec: 2.8,
+  },
+  door: { z0: 4.3, z1: 6.7, h: 2.3 }, partition: { h: 0.85, t: 0.12 },
+};
