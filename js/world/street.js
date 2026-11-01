@@ -75,10 +75,10 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
   // 천막 부스
   const tentTop = (col) => { const g = new THREE.ConeGeometry(1.62, 1.0, 4, 1, true); g.rotateY(Math.PI / 4); return new THREE.Mesh(g, M(col, { side: THREE.DoubleSide, roughness: 0.7 })); };
   const booths = [];
-  const makeBooth = (b, x, z, ry, market) => {
+  const makeBooth = (b, x, z, ry, market, kb) => {
     const [no, name, menu, price] = b;
     const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
-    const tcol = market ? '#F2C230' : '#F07A1A', poleM = M('#dcdcdc', { metalness: 0.6, roughness: 0.35 });
+    const tcol = kb ? '#D62F2F' : market ? '#F2C230' : '#F07A1A', poleM = M('#dcdcdc', { metalness: 0.6, roughness: 0.35 });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) place(box(0.06, 2.4, 0.06, poleM), sx * 1.1, 1.2, sz * 1.1, g);
     const top = tentTop(tcol); top.position.y = 2.9; g.add(top);
     const val = box(2.3, 0.35, 0.03, M(tcol)); val.position.set(0, 2.25, 1.13); g.add(val);
@@ -92,7 +92,7 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
     if (!market && (no % 3 === 0)) { const steam = []; for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.18, depthWrite: false })); g.add(s); steam.push(s); } anim.push((t, dt, red) => steam.forEach((s, i) => { const k = (t * 0.5 + i / 4) % 1; s.position.set(-0.4 + i * 0.25, 1.05 + k * 0.9, 0.6); s.scale.setScalar(1 + k * 2); s.material.opacity = red ? 0 : 0.16 * (1 - k); })); }
     // 번호 + 이름 간판 (앞)
     const nm = name.length > 9 ? name.replace(/\s*\(.*\)/, '') : name;
-    const sg = sign([`${no}  ${nm}`], 2.2, 0.34, { bg: '#ffffff', fg: '#3a1a08', radius: 10 }); sg.position.set(0, 2.25, 1.16); g.add(sg);
+    const sg = sign([kb ? nm : `${no}  ${nm}`], 2.2, 0.34, { bg: '#ffffff', fg: '#3a1a08', radius: 10 }); sg.position.set(0, 2.25, 1.16); g.add(sg);
     const mn = sign([menu.length > 16 ? menu.slice(0, 16) + '…' : menu], 2.0, 0.26, { bg: market ? '#7a5a00' : '#7a2e0e', fg: '#fff3dc', radius: 8 }); mn.position.set(0, 0.5, 1.03); g.add(mn);
     // 백열등
     const bulbM = new THREE.MeshBasicMaterial({ color: '#ffd38a' });
@@ -110,6 +110,9 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
   F.slice(10, 14).forEach((b, i) => makeBooth(b, 6.9 + i * 2.4, -3.6, 0, false));              // 동쪽 북편 11~14
   F.slice(14, 16).forEach((b, i) => makeBooth(b, 11.7 + i * 2.4, 3.6, Math.PI, false));        // 동쪽 남편 15~16
   MK.forEach((b, i) => makeBooth(b, -6.9 - i * 2.4, -3.6, 0, true));                              // 서쪽 17~20 플리마켓 (만양맛값 방면)
+  const KB = STREET.kbelt || [];
+  if (KB[0]) makeBooth(KB[0], 3.6, -17.75, -Math.PI / 2, false, true); if (KB[1]) makeBooth(KB[1], 3.6, -20.0, -Math.PI / 2, false, true); // 어서와존 K-미식벨트
+  if (KB[2]) makeBooth(KB[2], 16.5, -3.6, 0, false, true); if (KB[3]) makeBooth(KB[3], 18.9, -3.6, 0, false, true);
 
   // 접객 파라솔 (피크닉 테이블 = 앉는 자리)
   let idx = 0;
@@ -124,8 +127,10 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
     obs(x, z, 1.1, 2.0);
     for (const sx of [-1, 1]) for (const sz of [-0.45, 0.45]) { const ry = sx < 0 ? Math.PI / 2 : -Math.PI / 2; seats.push({ idx: idx++, x: x + sx * 0.78, z: z + sz, ry, y: 0.46, type: 'bench', zone: 'dine', approach: [x + sx * 1.45, z + sz] }); }
   };
-  for (const z of [8.2, 11.6, 15.0]) parasol(-2.4, z);
-  for (const z of [-8.2, -11.6, -15.0]) parasol(-2.4, z);
+  for (const z of [8.2, 11.6, 15.0, 18.4, 21.6]) parasol(-2.4, z);
+  for (const z of [-8.2, -11.6, -15.0, -18.4, -21.6]) parasol(-2.4, z);
+  for (const x of [17.4, 20.8]) parasol(x, 2.4);
+  for (const x of [-17.6, -21.0]) parasol(x, -2.4);
 
   // 무대 (교차로 가운데) + 대형 스크린 (버스킹·공연 영상)
   const stage = new THREE.Group(); scene.add(stage);
@@ -136,8 +141,19 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
   place(box(3.8, 0.16, 0.16, truss), 0, 4.2, -1.2, stage);
   { const sl = new THREE.SpotLight('#ffd9a0', 10, 9, 0.7, 0.6, 1.2); sl.position.set(0, 4.1, 1.5); sl.target.position.set(0, 0.5, 0); stage.add(sl, sl.target); }
   obs(0, 0, 4.2, 4.2);
+  // 대형 로고 간판 (무대 위 양면 + 북쪽 건물 옥상 전광판) — 어디서 봐도 용마미식거리 로고가 보이게
+  const logoBoard = (parent, x, y, z, ry, W) => { const g3 = new THREE.Group(); g3.position.set(x, y, z); g3.rotation.y = ry; parent.add(g3);
+    const H3 = W * 0.42; place(box(W + 0.5, H3 + 0.5, 0.2, M('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.45 })), 0, 0, 0, g3);
+    for (const zz of [0.14, -0.14]) { const lg = new THREE.Mesh(new THREE.PlaneGeometry(W, W * 477 / 1200), new THREE.MeshBasicMaterial({ map: loadTex('assets/tex/yongma_logo-yongma-color.webp'), transparent: true, toneMapped: false })); lg.position.z = zz; if (zz < 0) lg.rotation.y = Math.PI; g3.add(lg); }
+    const bm3 = new THREE.MeshBasicMaterial({ color: '#ffd38a' }); const n = Math.round(W * 3); for (let i = 0; i <= n; i++) for (const yy of [-(H3 / 2 + 0.3), H3 / 2 + 0.3]) place(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), bm3), -W / 2 - 0.25 + i * (W + 0.5) / n, yy, 0.15, g3);
+    return g3; };
+  logoBoard(stage, 0, 5.5, -1.25, 0, 6.4);
+  place(box(0.14, 2.0, 0.14, M('#c9ccd1', { metalness: 0.7 })), -1.6, 5.1, -1.2, stage); place(box(0.14, 2.0, 0.14, M('#c9ccd1', { metalness: 0.7 })), 1.6, 5.1, -1.2, stage);
+  logoBoard(scene, 0, 8.6, -H + 2.0, 0, 9.0);
+  logoBoard(scene, H - 2.0, 8.6, 0, -Math.PI / 2, 9.0);
   const scr = addScreen(scene, 'stage', { x: 0, y: 2.6, z: -1.05, w: 3.2, h: 1.8 }, clickables, anim); props.screen = scr;
-  const st = sign(['골목어게인 무대', '버스킹 · DJ 음악다방 · 거리노래방'], 2.6, 0.5, { bg: '#0E1F4D', fg: '#ffd38a', sub: '#ffe9c4', radius: 14 }); st.position.set(0, 0.85, 2.12); stage.add(st);
+  const st = sign(['골목어게인 무대', '버스킹 · DJ 음악다방 · 거리노래방'], 2.6, 0.42, { bg: '#0E1F4D', fg: '#ffd38a', sub: '#ffe9c4', radius: 14 }); st.position.set(0, 3.82, -1.0); stage.add(st);
+  logoBoard(stage, 0, 1.3, 2.2, 0, 3.0); // 무대 앞 로고 (입구에서 정면으로 보임)
 
   // 운영본부 (파란 천막) · 놀아존 체험 · 바람길 쉼터
   const hq = new THREE.Group(); hq.position.set(7.0, 0, 3.7); scene.add(hq);
@@ -162,9 +178,11 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
 
   // 남쪽 입구 아치 + 로고 + 마스코트 용지·마루
   const gate = new THREE.Group(); gate.position.set(0, 0, H - 0.2); scene.add(gate);
+  const mkGate = (x, z, ry) => { const g2 = new THREE.Group(); g2.position.set(x, 0, z); g2.rotation.y = ry; scene.add(g2); for (const sx of [-4.6, 4.6]) place(box(0.35, 4.6, 0.35, M('#0E1F4D')), sx, 2.3, 0, g2); place(box(9.6, 1.6, 0.2, M('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.35 })), 0, 4.3, 0, g2); const lg = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 1.55), new THREE.MeshBasicMaterial({ map: loadTex('assets/tex/yongma_logo-yongma-color.webp'), transparent: true, toneMapped: false })); lg.position.set(0, 4.3, 0.12); g2.add(lg); const lg2 = lg.clone(); lg2.position.z = -0.12; lg2.rotation.y = Math.PI; g2.add(lg2); };
+  mkGate(0, -H + 0.2, 0); mkGate(H - 0.2, 0, Math.PI / 2); mkGate(-H + 0.2, 0, Math.PI / 2);
   for (const sx of [-4.6, 4.6]) place(box(0.35, 4.6, 0.35, M('#0E1F4D')), sx, 2.3, 0, gate);
-  const ban = box(9.6, 1.4, 0.2, M('#0E1F4D')); ban.position.y = 4.3; gate.add(ban);
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.2), new THREE.MeshBasicMaterial({ map: loadTex('assets/tex/yongma_logo-yongma-white.webp'), transparent: true, toneMapped: false }));
+  const ban = box(9.6, 1.6, 0.2, M('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.35 })); ban.position.y = 4.3; gate.add(ban);
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 1.55), new THREE.MeshBasicMaterial({ map: loadTex('assets/tex/yongma_logo-yongma-color.webp'), transparent: true, toneMapped: false }));
   logo.position.set(0, 4.3, -0.12); logo.rotation.y = Math.PI; gate.add(logo);
   const logo2 = logo.clone(); logo2.position.z = 0.12; logo2.rotation.y = 0; gate.add(logo2);
   const gb = new THREE.MeshBasicMaterial({ color: '#ffd38a' }); for (let i = 0; i <= 16; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), gb); b.position.set(-4.7 + i * (9.4 / 16), 3.55, -0.12); gate.add(b); }
@@ -190,10 +208,13 @@ export function buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, pro
   bulbs.forEach((p, i) => bi.setColorAt(i, cols[i % 3]));
   let acc = 0; anim.push((t, dt, red) => { if (red) return; acc += dt; if (acc < 0.25) return; acc = 0; for (let i = 0; i < bulbs.length; i += 7) bi.setColorAt(i, cols[(i + Math.floor(t * 3)) % 3]); bi.instanceColor.needsUpdate = true; });
   // 따뜻한 빛 (부스 줄마다)
-  for (const [x, z] of [[0, 10.5], [0, -10.5], [10.5, 0], [-10.5, 0]]) { const l = new THREE.PointLight('#ffb870', 14, 16, 1.4); l.position.set(x, 4.2, z); scene.add(l); }
+  for (const [x, z] of [[0, 9], [0, -9], [9, 0], [-9, 0], [0, 19], [0, -19], [19, 0], [-19, 0]]) { const l = new THREE.PointLight('#ffb870', 13, 14, 1.4); l.position.set(x, 4.2, z); scene.add(l); }
   // 가로등
-  for (const [x, z] of [[-5.3, 7], [-5.3, -7], [5.3, 9], [-5.3, 13.5], [5.3, -9], [-9.6, -5.3], [9.6, 5.3]]) { const p = new THREE.Group(); p.position.set(x, 0, z); scene.add(p); place(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4.2, 8), M('#2b2b30', { metalness: 0.5 })), 0, 2.1, 0, p); place(new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), new THREE.MeshBasicMaterial({ color: '#fff1d0' })), 0, 4.3, 0, p); obs(x, z, 0.3, 0.3); }
-  for (const [x, z] of [[-4.6, -5.2], [4.6, -5.2], [-4.4, 16.0]]) { const pp = plantPot(0.9, 0.3); pp.position.set(x, 0, z); scene.add(pp); obs(x, z, 0.6, 0.6); }
+  for (const [x, z] of [[-5.3, 7], [-5.3, -7], [5.3, 9], [-5.3, 13.5], [5.3, -9], [-9.6, -5.3], [9.6, 5.3], [-5.3, 19.8], [5.3, 18.6], [-5.3, -19.8], [5.3, -15.6], [15.8, 5.3], [-15.8, -5.3], [22, 5.3], [-22, 5.3]]) { const p = new THREE.Group(); p.position.set(x, 0, z); scene.add(p); place(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4.2, 8), M('#2b2b30', { metalness: 0.5 })), 0, 2.1, 0, p); place(new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), new THREE.MeshBasicMaterial({ color: '#fff1d0' })), 0, 4.3, 0, p); obs(x, z, 0.3, 0.3); }
+  // 가로등마다 로고 깃발 (골목 안쪽으로 뻗어 걷는 내내 보이게, 카메라를 가리지 않는 높이·위치)
+  for (const [x, z] of [[-5.3, 7], [-5.3, -7], [5.3, 9], [-5.3, 13.5], [5.3, -9], [-5.3, 19.8], [5.3, 18.6], [-5.3, -19.8], [5.3, -15.6]]) logoBoard(scene, x - Math.sign(x) * 0.95, 3.3, z, 0, 1.3);
+  for (const [x, z] of [[-9.6, -5.3], [9.6, 5.3], [15.8, 5.3], [-15.8, -5.3], [22, 5.3], [-22, 5.3]]) logoBoard(scene, x, 3.3, z - Math.sign(z) * 0.95, Math.PI / 2, 1.3);
+  for (const [x, z] of [[-4.6, -5.2], [4.6, -5.2], [-4.4, 16.6]]) { const pp = plantPot(0.9, 0.3); pp.position.set(x, 0, z); scene.add(pp); obs(x, z, 0.6, 0.6); }
   props.booths = booths;
 }
 

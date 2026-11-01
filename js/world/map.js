@@ -2,7 +2,7 @@
 // 작게 보이다가 누르면 카메라가 그 건물로 날아가 크게 보여줌
 import * as THREE from 'three';
 import { M, GOLD, box, place, shadow, rbox, hanokRoof, grassTex, stoneTex, skyTex, tileRoofTex, lotusLantern } from './common.js';
-import { GARDEN, BRAND, SPACES, STREET } from '../config.js';
+import { GARDEN, BRAND, SPACES, STREET, SPACE_ORDER } from '../config.js';
 
 export const MAP_SPOTS = {
   temple: { pos: [-30, 0, -40], view: { pos: [-30, 17, -14], look: [-30, 9, -40] }, pinH: 9 },
@@ -12,8 +12,11 @@ export const MAP_SPOTS = {
   cafe: { pos: [-34, 0, 21], view: { pos: [-34, 7, 36], look: [-34, 2, 20] }, pinH: 6.5 },
   restaurant: { pos: [33, 0, 15], view: { pos: [33, 7, 31], look: [33, 2, 14] }, pinH: 7 },
 };
-if (SPACES.foodstreet) MAP_SPOTS.foodstreet = { pos: [-12, 0, -11], view: { pos: [-12, 12, 12], look: [-12, 2, -12] }, pinH: 9 };
+export const FEATURED = SPACE_ORDER[0] === 'foodstreet'; // 미식거리 중심 마을(용마): 지도 가운데 크게
+if (SPACES.foodstreet) MAP_SPOTS.foodstreet = FEATURED ? { pos: [-3, 0, -12], view: { pos: [-3, 26, 24], look: [-3, 4, -13] }, pinH: 7 } : { pos: [-12, 0, -11], view: { pos: [-12, 12, 12], look: [-12, 2, -12] }, pinH: 9 };
 if (SPACES.arcade) MAP_SPOTS.arcade = { pos: [43, 0, -9], view: { pos: [43, 8, 8], look: [43, 2.5, -10] }, pinH: 7 };
+for (const k of Object.keys(MAP_SPOTS)) if (!SPACE_ORDER.includes(k)) delete MAP_SPOTS[k];
+const HAS_TEMPLE = SPACE_ORDER.includes('temple');
 
 // 지형 높이
 function riverZ(x) { return 3 + Math.sin(x * 0.06) * 4 + Math.sin(x * 0.13) * 1.5; }
@@ -84,27 +87,28 @@ export function buildMap({ low }) {
   road([[0, 20], [-8, 18], [-17, 21]]);
   road([[0, 20], [6, 18], [12, 19]]);
   road([[1, 26], [16, 12], [24, 0], [27, -9]]);
-  road([[0, 20], [-6, 4], [-14, -6], [-22, -14], [-28, -24]], 2.2);
+  if (HAS_TEMPLE) road([[0, 20], [-6, 4], [-14, -6], [-22, -14], [-28, -24]], 2.2);
+  else road([[0, 20], [-6, 4], [-12, -5]], 2.2);
   road([[-17, 21], [-26, 24], [-34, 26]], 2.2);
   road([[12, 19], [22, 20], [33, 20]], 2.2);
   // 절 돌계단 (산길)
-  const stairs = new THREE.Group(); scene.add(stairs);
+  const stairs = new THREE.Group(); if (HAS_TEMPLE) scene.add(stairs);
   for (let i = 0; i < 26; i++) { const t = i / 25; const z = -24 - t * 10, x = -28 - t * 2; const y = heightAt(x, z); const s = rbox(2.6, 0.3, 0.6, 0.05, M('#a8a293')); s.position.set(x, y + 0.1, z); stairs.add(s); }
   shadow(stairs);
 
   const clickables = [], buildings = {};
   const reg = (key, g) => { g.traverse(o => { o.userData.space = key; }); scene.add(g); clickables.push(g); buildings[key] = g; };
-  reg('temple', templeComplex());
-  reg('church', churchBuilding());
-  reg('cathedral', cathedralBuilding());
-  reg('playground', playgroundPark(anim));
-  reg('cafe', cafeBuilding());
-  reg('restaurant', restaurantBuilding());
+  if (MAP_SPOTS.temple) reg('temple', templeComplex());
+  if (MAP_SPOTS.church) reg('church', churchBuilding());
+  if (MAP_SPOTS.cathedral) reg('cathedral', cathedralBuilding());
+  if (MAP_SPOTS.playground) reg('playground', playgroundPark(anim));
+  if (MAP_SPOTS.cafe) reg('cafe', cafeBuilding());
+  if (MAP_SPOTS.restaurant) reg('restaurant', restaurantBuilding());
   if (MAP_SPOTS.foodstreet) reg('foodstreet', foodStreetMap(anim));
   if (MAP_SPOTS.arcade) reg('arcade', arcadeBuilding(anim));
   const di = driveIn(anim); scene.add(di); clickables.push(di);
   // 12지신 석상 — 절로 올라가는 돌계단 양옆 (누르면 띠별 운세)
-  ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'].forEach((id, i) => {
+  if (HAS_TEMPLE) ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'].forEach((id, i) => {
     const side = i % 2 ? 1 : -1, t = 0.02 + Math.floor(i / 2) * 0.165; const z = -24 - t * 10, x = -28 - t * 2 + side * 2.15; const y = heightAt(x, z);
     const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
     place(rbox(0.9, 0.45, 0.9, 0.06, M('#9d9686', { roughness: 0.95 })), 0, 0.22, 0, g);
@@ -119,8 +123,9 @@ export function buildMap({ low }) {
   const pines = [];
   for (let i = 0; i < 190; i++) {
     const x = (rand() - 0.5) * 210, z = -22 - rand() * 64; const h = heightAt(x, z);
-    if (Math.hypot((x + 30) / 13, (z + 40) / 9) < 1.3) continue;
-    if (Math.abs(x + 28) < 3.5 && z > -37) continue;
+    if (HAS_TEMPLE && Math.hypot((x + 30) / 13, (z + 40) / 9) < 1.3) continue;
+    if (inFeat(x, z, 2)) continue;
+    if (HAS_TEMPLE && Math.abs(x + 28) < 3.5 && z > -37) continue;
     if (Math.hypot(x - 27, z + 16) < 8) continue;
     if (Math.abs(x - DRIVE_IN.pos[0]) < 17 && z > DRIVE_IN.pos[2] - 6) continue;
     pines.push([x, h - 0.1, z, 3 + rand() * 3.5, rand() * 3]);
@@ -155,7 +160,8 @@ export function buildMap({ low }) {
   };
 }
 
-function nearAny(x, z, r) { return Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 16 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
+const inFeat = (x, z, m = 0) => FEATURED && Math.abs(x + 3) < 19 + m && Math.abs(z + 12) < 15 + m;
+function nearAny(x, z, r) { return inFeat(x, z, r * 0.3) || Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 16 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function house(roofCol, seed) {
@@ -389,7 +395,7 @@ function restaurantBuilding() {
 }
 
 /* ---------- 자동차 극장 (대형 야외 스크린 + 광고) ---------- */
-export const DRIVE_IN = { pos: [11, 0, -30] };
+export const DRIVE_IN = { pos: FEATURED ? [27, 0, -33] : [11, 0, -30] };
 function driveIn(anim) {
   const g = new THREE.Group(); const [cx, , cz] = DRIVE_IN.pos; g.position.set(cx, heightAt(cx, cz), cz); g.rotation.y = -0.05; g.scale.setScalar(1.3);
   const lot = new THREE.Mesh(new THREE.PlaneGeometry(21, 13), new THREE.MeshStandardMaterial({ color: '#5d5c58', roughness: 0.95 })); lot.rotation.x = -Math.PI / 2; lot.position.set(0, 0.07, 4.5); g.add(lot);
@@ -460,7 +466,7 @@ function driveIn(anim) {
 
 /* ---------- 먹거리 골목 (지도용 축소 모형): 주황 천막 줄 + 파라솔 + 전구 줄 + 입구 아치 ---------- */
 function foodStreetMap(anim) {
-  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.foodstreet.pos; g.position.set(cx, heightAt(cx, cz), cz); g.scale.setScalar(1.35);
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.foodstreet.pos; g.position.set(cx, heightAt(cx, cz), cz); g.scale.setScalar(FEATURED ? 2.6 : 1.35);
   place(box(13, 0.2, 10, M('#3d3f45', { roughness: 0.95 })), 0, 0.1, 0, g);
   place(box(13, 0.22, 1.0, M('#8d8a84')), 0, 0.11, -4.6, g); place(box(13, 0.22, 1.0, M('#8d8a84')), 0, 0.11, 4.6, g);
   const tent = (x, z, col) => { const t = new THREE.Group(); t.position.set(x, 0.2, z); g.add(t);
@@ -476,13 +482,25 @@ function foodStreetMap(anim) {
   // 입구 아치 + 로고
   const arch = new THREE.Group(); arch.position.set(0, 0.2, 5.1); g.add(arch);
   for (const sx of [-3.2, 3.2]) place(box(0.25, 3.2, 0.25, M('#0E1F4D')), sx, 1.6, 0, arch);
-  place(box(6.8, 1.1, 0.15, M('#0E1F4D')), 0, 3.2, 0, arch);
-  const lt = new THREE.TextureLoader().load('assets/tex/yongma_logo-yongma-white.webp', t => { t.colorSpace = THREE.SRGBColorSpace; });
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.97), new THREE.MeshBasicMaterial({ map: lt, transparent: true, toneMapped: false })); logo.position.set(0, 3.2, 0.09); arch.add(logo);
+  place(box(6.8, 1.3, 0.15, M('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.4 })), 0, 3.2, 0, arch);
+  const lt = new THREE.TextureLoader().load('assets/tex/yongma_logo-yongma-color.webp', t => { t.colorSpace = THREE.SRGBColorSpace; });
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.23), new THREE.MeshBasicMaterial({ map: lt, transparent: true, toneMapped: false })); logo.position.set(0, 3.2, 0.09); arch.add(logo);
   const ab = new THREE.MeshBasicMaterial({ color: '#ffd38a' }); for (let i = 0; i <= 12; i++) place(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), ab), -3.3 + i * 0.55, 2.6, 0.1, arch);
   // 마스코트 용지·마루
   for (const [img, x, a] of [['mascot-yong', -4.6, 600 / 669], ['mascot-ma', 4.6, 600 / 850]]) { const t = new THREE.TextureLoader().load(`assets/tex/yongma_${img}.webp`, tt => { tt.colorSpace = THREE.SRGBColorSpace; }); const m = new THREE.Mesh(new THREE.PlaneGeometry(2.0 * a, 2.0), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide })); m.position.set(x, 1.2, 5.2); m.userData.billboard = true; g.add(m); }
   const pl = new THREE.PointLight('#ffb870', 10, 14, 1.6); pl.position.set(0, 3.5, 0); g.add(pl);
+  if (FEATURED) { // 강조: 하늘로 쏘는 서치라이트 + 떠 있는 대형 로고 간판
+    const beams = []; const bm2 = new THREE.MeshBasicMaterial({ color: '#ffd9a0', transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    for (const [x, z] of [[-6, -4], [6, -4], [-6, 4], [6, 4]]) { const piv = new THREE.Group(); piv.position.set(x, 0.3, z); g.add(piv); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.08, 18, 16, 1, true), bm2); c.position.y = 9; piv.add(c); piv.userData.ph = x * 0.3 + z; beams.push(piv); }
+    anim.push((t, red) => beams.forEach(b => { const a = red ? 0 : Math.sin(t * 0.6 + b.userData.ph) * 0.35; b.rotation.set(a, 0, Math.cos(t * 0.5 + b.userData.ph) * 0.35); }));
+    const bb = new THREE.Group(); bb.position.set(0, 7.2, 0); g.add(bb);
+    place(box(8.2, 3.4, 0.2, M('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.5 })), 0, 0, 0, bb);
+    const ft = new THREE.TextureLoader().load('assets/tex/yongma_logo-yongma-color.webp', t => { t.colorSpace = THREE.SRGBColorSpace; });
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 3.02), new THREE.MeshBasicMaterial({ map: ft, transparent: true, toneMapped: false })); fl.position.z = 0.14; bb.add(fl);
+    const fb = new THREE.MeshBasicMaterial({ color: '#ffd38a' }); for (let i = 0; i <= 22; i++) for (const y of [-1.8, 1.8]) place(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), fb), -4.2 + i * 0.382, y, 0.14, bb);
+    for (const sx of [-3.4, 3.4]) place(box(0.14, 7.2, 0.14, M('#2b2b30')), sx, -3.6, -0.05, bb);
+    anim.push((t, red) => { if (!red) bb.position.y = 7.2 + Math.sin(t * 1.2) * 0.12; });
+  }
   return shadow(g);
 }
 
