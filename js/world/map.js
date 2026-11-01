@@ -99,6 +99,17 @@ export function buildMap({ low }) {
   reg('cafe', cafeBuilding());
   reg('restaurant', restaurantBuilding());
   const di = driveIn(anim); scene.add(di); clickables.push(di);
+  // 12지신 석상 — 절로 올라가는 돌계단 양옆 (누르면 띠별 운세)
+  ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'].forEach((id, i) => {
+    const side = i % 2 ? 1 : -1, t = 0.02 + Math.floor(i / 2) * 0.165; const z = -24 - t * 10, x = -28 - t * 2 + side * 2.15; const y = heightAt(x, z);
+    const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+    place(rbox(0.9, 0.45, 0.9, 0.06, M('#9d9686', { roughness: 0.95 })), 0, 0.22, 0, g);
+    place(rbox(0.7, 0.12, 0.7, 0.04, M('#b6af9f', { roughness: 0.9 })), 0, 0.5, 0, g);
+    const st = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.85), new THREE.MeshStandardMaterial({ map: new THREE.TextureLoader().load(`assets/tex/zodiac/${id}.webp`, t2 => { t2.colorSpace = THREE.SRGBColorSpace; }), transparent: true, alphaTest: 0.4, roughness: 0.9, side: THREE.DoubleSide }));
+    st.position.y = 0.56 + 0.92; st.userData.billboard = true; g.add(st);
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.6, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.3; g.add(hit);
+    g.userData.zodiac = id; clickables.push(g); shadow(g);
+  });
   // 숲·나무 (인스턴싱으로 그리기 호출 최소화)
   const rand = mulberry(42);
   const pines = [];
@@ -439,6 +450,6 @@ function driveIn(anim) {
   const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 200; const x2 = sc2.getContext('2d'); x2.fillStyle = '#2a1f1a'; x2.fillRect(0, 0, 512, 200); x2.strokeStyle = '#ffcf7a'; x2.lineWidth = 10; x2.strokeRect(8, 8, 496, 184); x2.fillStyle = '#ffe2a8'; x2.font = '900 78px "Noto Sans KR", sans-serif'; x2.textAlign = 'center'; x2.fillText('자동차 극장', 256, 128);
   const st2 = new THREE.CanvasTexture(sc2); st2.colorSpace = THREE.SRGBColorSpace;
   const sn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.12), [M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), new THREE.MeshBasicMaterial({ map: st2, toneMapped: false }), M('#2a1f1a')]); sn.position.y = 2.6; sg.add(sn);
-  g.traverse(o => { o.userData.screen = 'drivein'; });
+  g.traverse(o => { o.userData.videoScreen = 'drivein'; });
   return shadow(g);
 }
