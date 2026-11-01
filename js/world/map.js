@@ -2,13 +2,15 @@
 // 작게 보이다가 누르면 카메라가 그 건물로 날아가 크게 보여줌
 import * as THREE from 'three';
 import { M, GOLD, box, place, shadow, rbox, hanokRoof, grassTex, stoneTex, skyTex, tileRoofTex, lotusLantern } from './common.js';
-import { GARDEN } from '../config.js';
+import { GARDEN, BRAND } from '../config.js';
 
 export const MAP_SPOTS = {
   temple: { pos: [-30, 0, -40], view: { pos: [-30, 17, -14], look: [-30, 9, -40] }, pinH: 9 },
   church: { pos: [27, 0, -16], view: { pos: [27, 9, 4], look: [27, 4, -16] }, pinH: 10 },
   cathedral: { pos: [12, 0, 12], view: { pos: [12, 8, 34], look: [12, 5, 10] }, pinH: 13 },
   playground: { pos: [-17, 0, 15], view: { pos: [-17, 8, 34], look: [-17, 2, 14] }, pinH: 7 },
+  cafe: { pos: [-34, 0, 21], view: { pos: [-34, 7, 36], look: [-34, 2, 20] }, pinH: 6.5 },
+  restaurant: { pos: [33, 0, 15], view: { pos: [33, 7, 31], look: [33, 2, 14] }, pinH: 7 },
 };
 
 // 지형 높이
@@ -81,6 +83,8 @@ export function buildMap({ low }) {
   road([[0, 20], [6, 18], [12, 19]]);
   road([[1, 26], [16, 12], [24, 0], [27, -9]]);
   road([[0, 20], [-6, 4], [-14, -6], [-22, -14], [-28, -24]], 2.2);
+  road([[-17, 21], [-26, 24], [-34, 26]], 2.2);
+  road([[12, 19], [22, 20], [33, 20]], 2.2);
   // 절 돌계단 (산길)
   const stairs = new THREE.Group(); scene.add(stairs);
   for (let i = 0; i < 26; i++) { const t = i / 25; const z = -24 - t * 10, x = -28 - t * 2; const y = heightAt(x, z); const s = rbox(2.6, 0.3, 0.6, 0.05, M('#a8a293')); s.position.set(x, y + 0.1, z); stairs.add(s); }
@@ -92,6 +96,9 @@ export function buildMap({ low }) {
   reg('church', churchBuilding());
   reg('cathedral', cathedralBuilding());
   reg('playground', playgroundPark(anim));
+  reg('cafe', cafeBuilding());
+  reg('restaurant', restaurantBuilding());
+  const di = driveIn(anim); scene.add(di); clickables.push(di);
   // 숲·나무 (인스턴싱으로 그리기 호출 최소화)
   const rand = mulberry(42);
   const pines = [];
@@ -100,6 +107,7 @@ export function buildMap({ low }) {
     if (Math.hypot((x + 30) / 13, (z + 40) / 9) < 1.3) continue;
     if (Math.abs(x + 28) < 3.5 && z > -37) continue;
     if (Math.hypot(x - 27, z + 16) < 8) continue;
+    if (Math.abs(x - DRIVE_IN.pos[0]) < 15 && z > DRIVE_IN.pos[2] - 6) continue;
     pines.push([x, h - 0.1, z, 3 + rand() * 3.5, rand() * 3]);
   }
   scene.add(instancedPines(pines));
@@ -132,7 +140,7 @@ export function buildMap({ low }) {
   };
 }
 
-function nearAny(x, z, r) { return Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4); }
+function nearAny(x, z, r) { return Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 14 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function house(roofCol, seed) {
@@ -332,4 +340,103 @@ function instancedRoundTrees(list) {
   });
   [trunk, ...blobs].forEach(o => { o.castShadow = true; o.receiveShadow = true; g.add(o); });
   return { group: g, sway: () => {} };
+}
+
+/* ---------- 카페 (유리창 + 테라스) ---------- */
+function cafeBuilding() {
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.cafe.pos; g.position.set(cx, heightAt(cx, cz), cz);
+  const wood = M('#8a5f3f', { roughness: 0.6 });
+  place(box(9, 0.3, 7, M('#cdbb9c')), 0, 0.15, 0.5, g);
+  place(box(8, 3.4, 5, M('#F2EADB')), 0, 1.85, -0.5, g);
+  place(box(8.4, 0.35, 5.4, M('#3a3533')), 0, 3.7, -0.5, g);
+  const glass = new THREE.MeshStandardMaterial({ color: '#ffe8bf', emissive: '#ffbf6a', emissiveIntensity: 0.9, roughness: 0.1 });
+  for (let i = 0; i < 3; i++) place(box(1.9, 2.2, 0.05, glass), -2.6 + i * 2.6, 1.55, 2.03, g);
+  for (let i = 0; i < 4; i++) place(box(0.14, 3.4, 0.14, wood), -3.9 + i * 2.6, 1.85, 2.05, g);
+  const aw = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 8.2, 16, 1, true, 0, Math.PI), new THREE.MeshStandardMaterial({ color: '#F4E6C8', side: THREE.DoubleSide })); aw.rotation.set(0, 0, Math.PI / 2); aw.position.set(0, 3.05, 2.2); aw.scale.set(1, 0.6, 1); g.add(aw);
+  for (let i = 0; i < 9; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.605, 0.605, 0.45, 16, 1, true, 0, Math.PI), new THREE.MeshStandardMaterial({ color: '#5F8D89', side: THREE.DoubleSide })); st.rotation.set(0, 0, Math.PI / 2); st.position.set(-3.6 + i * 0.9, 3.05, 2.2); st.scale.set(1, 0.6, 1); g.add(st); }
+  // 테라스 테이블·파라솔
+  for (const x of [-2.8, 0, 2.8]) { const t = new THREE.Group(); t.position.set(x, 0.3, 3.4); g.add(t); place(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 16), M('#f4eee2')), 0, 0.72, 0, t); place(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.1, 8), M('#5a4636')), 0, 1.05, 0, t); place(new THREE.Mesh(new THREE.ConeGeometry(1.0, 0.45, 12), M(['#E9A26D', '#78B8BD', '#DDA7B7'][Math.round(x / 2.8) + 1])), 0, 2.2, 0, t); for (const s of [-1, 1]) place(rbox(0.36, 0.45, 0.36, 0.05, wood), s * 0.65, 0.22, 0, t); }
+  return shadow(g);
+}
+/* ---------- 식당 (한옥풍 지붕 + 등) ---------- */
+function restaurantBuilding() {
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.restaurant.pos; g.position.set(cx, heightAt(cx, cz), cz);
+  place(box(10, 0.4, 7.4, M('#b9b2a2')), 0, 0.2, 0, g);
+  place(box(9, 3.0, 6, M('#EFE6D6')), 0, 1.9, 0, g);
+  const wood = M('#6b4630', { roughness: 0.6 });
+  for (let i = 0; i < 6; i++) place(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 3.0, 12), wood), -4.3 + i * 1.72, 1.9, 3.05, g);
+  const win = new THREE.MeshStandardMaterial({ color: '#ffe2a8', emissive: '#ffb860', emissiveIntensity: 0.9 });
+  for (let i = 0; i < 4; i++) place(box(1.2, 1.4, 0.05, win), -2.6 + i * 1.72 - (i > 1 ? 0 : 0), 1.9, 3.03, g);
+  place(box(1.4, 2.3, 0.06, M('#5b3f2a')), 3.4, 1.55, 3.04, g);
+  const roof = hanokRoof(11.6, 8.2, 2.0, { color: '#4a4440', upturn: 0.6 }); roof.position.y = 3.4; g.add(roof);
+  for (const x of [-3.6, 0, 3.6]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.45, 12), new THREE.MeshStandardMaterial({ color: '#d9533c', emissive: '#d9533c', emissiveIntensity: 0.7 })); l.position.set(x, 2.9, 3.4); g.add(l); }
+  return shadow(g);
+}
+
+/* ---------- 자동차 극장 (대형 야외 스크린 + 광고) ---------- */
+export const DRIVE_IN = { pos: [13, 0, -27] };
+function driveIn(anim) {
+  const g = new THREE.Group(); const [cx, , cz] = DRIVE_IN.pos; g.position.set(cx, heightAt(cx, cz), cz); g.rotation.y = -0.05; g.scale.setScalar(1.45);
+  const lot = new THREE.Mesh(new THREE.PlaneGeometry(16, 13), new THREE.MeshStandardMaterial({ color: '#5d5c58', roughness: 0.95 })); lot.rotation.x = -Math.PI / 2; lot.position.set(0, 0.07, 4.5); g.add(lot);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(16.4, 4, 13.4), new THREE.MeshStandardMaterial({ map: stoneTex('#a59a88', { tiles: 3, repeat: [6, 2] }), roughness: 0.9 })); base.position.set(0, -1.97, 4.5); g.add(base);
+  for (let i = -3; i <= 3; i++) { const l = box(0.08, 0.01, 2.6, M('#e8e2d0')); l.position.set(i * 2, 0.08, 6.6); g.add(l); const l2 = l.clone(); l2.position.z = 9.8; g.add(l2); }
+  // 스크린 (광고 슬라이드)
+  for (const s of [-1, 1]) place(box(0.35, 7, 0.35, M('#3a3533')), s * 5.6, 3.5, -0.2, g);
+  const frame = box(11.6, 6.4, 0.3, M('#2b2b2b')); frame.position.set(0, 4.6, -0.2); g.add(frame);
+  const c = document.createElement('canvas'); c.width = 1280; c.height = 704; const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(11, 6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.set(0, 4.6, -0.04); g.add(scr);
+  // 접속하자마자 재생되는 홍보 영상 (라이프카드) — 캔버스 애니메이션
+  const logo = new Image(); logo.src = BRAND.logo;
+  const SC = [[`${BRAND.en} CARD`, `${BRAND.short} 라이프카드`], ['한 장으로 마을 어디서나', '기도 · 놀이터 · 카페 · 식당'], ['화면을 눌러 크게 보기', '소리와 함께 감상할 수 있어요']];
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+  let T = 0, acc = 0;
+  const draw = () => {
+    const W = 1280, H = 704; const ph = Math.floor(T / 6) % SC.length, lt = T % 6;
+    const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0f1d2b'); bg.addColorStop(0.5 + Math.sin(T * 0.4) * 0.2, '#22344f'); bg.addColorStop(1, '#3a2442'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    for (let k = 0; k < 40; k++) { const px = (k * 211 + T * (20 + k % 5 * 8)) % W, py = (k * 97) % H; ctx.fillStyle = `rgba(255,220,160,${0.08 + (k % 4) * 0.04})`; ctx.beginPath(); ctx.arc(px, py, 2 + k % 3, 0, Math.PI * 2); ctx.fill(); }
+    // 카드 (회전 + 빛 반사)
+    const cx = 380, cy = 352, cw = 440, ch = 278; const sx = Math.cos(T * 0.9) ; const front = sx > 0;
+    ctx.save(); ctx.translate(cx, cy + Math.sin(T * 1.3) * 10); ctx.scale(Math.max(0.04, Math.abs(sx)), 1); ctx.rotate(-0.06);
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18;
+    const cg = ctx.createLinearGradient(-cw / 2, -ch / 2, cw / 2, ch / 2); if (front) { cg.addColorStop(0, '#f6e3b0'); cg.addColorStop(0.45, '#c9a45c'); cg.addColorStop(1, '#8a6a2e'); } else { cg.addColorStop(0, '#20303f'); cg.addColorStop(1, '#0d141c'); }
+    rr(-cw / 2, -ch / 2, cw, ch, 26); ctx.fillStyle = cg; ctx.fill(); ctx.shadowColor = 'transparent';
+    if (front) {
+      ctx.fillStyle = '#e8d29a'; rr(-cw / 2 + 36, -30, 62, 48, 8); ctx.fill(); ctx.strokeStyle = '#9a7a3a'; ctx.lineWidth = 2; ctx.stroke();
+      if (logo.complete && logo.naturalWidth) { const lh = 64, lw = lh * logo.naturalWidth / logo.naturalHeight; ctx.globalAlpha = 0.95; ctx.drawImage(logo, cw / 2 - lw - 30, -ch / 2 + 26, lw, lh); ctx.globalAlpha = 1; }
+      ctx.fillStyle = '#3a2a10'; ctx.font = '800 34px "Noto Sans KR", sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`${BRAND.short} LIFE CARD`, -cw / 2 + 36, ch / 2 - 72);
+      ctx.font = '600 22px "Noto Sans KR", sans-serif'; ctx.fillText('MEMBERSHIP', -cw / 2 + 36, ch / 2 - 34);
+      const sh = ((T * 0.5) % 1.6 - 0.3) * cw; const sg2 = ctx.createLinearGradient(sh - 80, 0, sh + 80, 0); sg2.addColorStop(0, 'rgba(255,255,255,0)'); sg2.addColorStop(0.5, 'rgba(255,255,255,.45)'); sg2.addColorStop(1, 'rgba(255,255,255,0)'); rr(-cw / 2, -ch / 2, cw, ch, 26); ctx.fillStyle = sg2; ctx.fill();
+    } else { ctx.fillStyle = '#c9ae73'; ctx.font = '800 40px "Noto Sans KR", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(BRAND.en, 0, 14); }
+    ctx.restore();
+    // 문구 (페이드)
+    const a = Math.min(1, lt / 0.8, (6 - lt) / 0.8); ctx.globalAlpha = Math.max(0, a); ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff3dc'; let fs = 66; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; while (ctx.measureText(SC[ph][0]).width > 600 && fs > 30) { fs -= 2; ctx.font = `900 ${fs}px "Noto Sans KR", sans-serif`; } ctx.fillText(SC[ph][0], 660, 320 + (1 - a) * 20);
+    ctx.fillStyle = '#e9c98a'; ctx.font = '600 40px "Noto Sans KR", sans-serif'; ctx.fillText(SC[ph][1], 660, 392 + (1 - a) * 20); ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, H - 8, W, 8); ctx.fillStyle = '#c9ae73'; ctx.fillRect(0, H - 8, W * ((T % 18) / 18), 8);
+    tex.needsUpdate = true;
+  };
+  draw(); anim.push((t, red, dt) => { T += dt || 0.016; acc += dt || 0.016; if (acc > (red ? 0.5 : 0.05)) { acc = 0; draw(); } });
+  g.userData.screenMesh = scr; DRIVE_IN.mesh = scr;
+  const glow = new THREE.PointLight('#bcd2ff', 6, 18, 1.6); glow.position.set(0, 4.5, 3); g.add(glow);
+  // 줄지어 선 자동차
+  const cols = ['#c0392b', '#2e86de', '#f1c40f', '#ecf0f1', '#27ae60', '#8e44ad', '#e67e22', '#34495e', '#d35400', '#16a085'];
+  let k = 0;
+  for (const z of [6.6, 9.8]) for (let x = -5; x <= 5; x += 2) {
+    if ((x + z) % 3 === 0 && k % 4 === 3) { k++; continue; }
+    const car = new THREE.Group(); car.position.set(x + 1, 0.07, z); car.rotation.y = Math.PI; g.add(car);
+    const bodyM = M(cols[k % cols.length], { roughness: 0.35, metalness: 0.4 });
+    place(rbox(1.5, 0.5, 2.9, 0.18, bodyM), 0, 0.5, 0, car);
+    place(rbox(1.3, 0.45, 1.5, 0.16, bodyM), 0, 0.95, 0.15, car);
+    place(box(1.22, 0.36, 1.42, new THREE.MeshStandardMaterial({ color: '#203040', roughness: 0.1, metalness: 0.5 })), 0, 0.97, 0.15, car);
+    for (const sx of [-0.7, 0.7]) for (const sz of [-0.9, 0.9]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 14), M('#1b1b1b')); w.rotation.z = Math.PI / 2; w.position.set(sx, 0.28, sz); car.add(w); }
+    for (const sx of [-0.5, 0.5]) place(box(0.25, 0.1, 0.05, new THREE.MeshStandardMaterial({ color: '#ff4d4d', emissive: '#ff2a2a', emissiveIntensity: 1.2 })), sx, 0.6, 1.46, car);
+    k++;
+  }
+  const sg = new THREE.Group(); sg.position.set(-7.4, 0, 9); g.add(sg);
+  place(box(0.15, 2.4, 0.15, M('#3a3533')), 0, 1.2, 0, sg);
+  const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 200; const x2 = sc2.getContext('2d'); x2.fillStyle = '#2a1f1a'; x2.fillRect(0, 0, 512, 200); x2.strokeStyle = '#ffcf7a'; x2.lineWidth = 10; x2.strokeRect(8, 8, 496, 184); x2.fillStyle = '#ffe2a8'; x2.font = '900 78px "Noto Sans KR", sans-serif'; x2.textAlign = 'center'; x2.fillText('자동차 극장', 256, 128);
+  const st2 = new THREE.CanvasTexture(sc2); st2.colorSpace = THREE.SRGBColorSpace;
+  const sn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.12), [M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), new THREE.MeshBasicMaterial({ map: st2, toneMapped: false }), M('#2a1f1a')]); sn.position.y = 2.6; sg.add(sn);
+  g.traverse(o => { o.userData.screen = 'drivein'; });
+  return shadow(g);
 }
