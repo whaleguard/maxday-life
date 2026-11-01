@@ -767,7 +767,8 @@ function handleTap(x, y) {
   if (!app.world || app.busy) return;
   if (app.mode === 'map') {
     const hit = pick(x, y, app.world.clickables)[0];
-    if (hit && findUp(hit.object, 'screen')) { openVideo('drivein'); return; }
+    if (hit && findUp(hit.object, 'videoScreen')) { openVideo('drivein'); return; }
+    const zz = hit && findUp(hit.object, 'zodiac'); if (zz) { openZodiac(zz.userData.zodiac); return; }
     if (hit) { const b = findUp(hit.object, 'space'); if (b) { if (app.focus === b.userData.space) askName(b.userData.space, 0); else focusSpot(b.userData.space); } }
     return;
   }
@@ -778,7 +779,7 @@ function handleTap(x, y) {
   for (const h of hits) {
     const seatO = findUp(h.object, 'seatIdx'); if (seatO) { trySit(seatO.userData.seatIdx); return; }
     const cand = findUp(h.object, 'candleIdx'); if (cand) { tryCandle(cand.userData.candleIdx); return; }
-    const scn = findUp(h.object, 'screen'); if (scn) { openVideo(scn.userData.screen); return; }
+    const scn = findUp(h.object, 'videoScreen'); if (scn) { openVideo(scn.userData.videoScreen); return; }
     const tb = findUp(h.object, 'tableId'); if (tb) { openModal('resv'); reserve.open(app.space, { table: tb.userData.tableId }); return; }
     const z = findUp(h.object, 'zodiac'); if (z) { useObject(z); return; }
     const f = findUp(h.object, 'feature'); if (f) { useObject(f); return; }

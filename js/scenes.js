@@ -863,6 +863,6 @@ export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, c
   };
   draw(); let acc = 0; anim.push((t, dt) => { acc += dt; if (acc > 4.5) { acc = 0; draw(); } });
   const glow = new THREE.PointLight('#ffe2b0', 1.2, 4, 2); glow.position.set(0, 0, 0.8); g.add(glow);
-  g.userData.screen = kind; clickables.push(g);
+  g.userData.videoScreen = kind; clickables.push(g);
   return g;
 }
