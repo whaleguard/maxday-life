@@ -82,7 +82,9 @@ function boot() {
 }
 
 /* ---------------- 지도(입구) ---------------- */
+function applyRoomLogo() { const im = $('#room-logo'); if (!im) return; if (SPACE_ORDER[0] === 'foodstreet') { im.src = BRAND.logo; im.hidden = false; } }
 function buildEnterButtons() {
+  applyRoomLogo();
   const grid = $('#enter-grid'); grid.innerHTML = ''; grid.classList.toggle('n8', SPACE_ORDER.length === 8); grid.classList.toggle('n7', SPACE_ORDER.length === 7);
   for (const key of SPACE_ORDER) {
     const sp = SPACES[key], st = BUTTON_STYLE[key];
@@ -93,6 +95,14 @@ function buildEnterButtons() {
     b.onclick = () => focusSpot(key);
     grid.appendChild(b);
   }
+  if (BRAND.cinema) { // 자동차 극장 (영화·영상 상영관): 카메라가 전광판으로 날아가 영상 재생
+    const b = document.createElement('button'); b.className = 'enter-btn'; b.dataset.space = 'cinema';
+    b.style.cssText = '--bg:#DCE3F5;--fg:#1F2C55;--bd:#8C9BC9;--hv:#CBD5EF';
+    b.innerHTML = '<span class="n">자동차 극장</span><span class="d">영화·영상 보기</span>'; b.setAttribute('aria-label', '자동차 극장 — 영화·영상 보기');
+    b.onclick = () => { const [x, , z] = DRIVE_IN.pos; app.mapUser = true; setCamTween({ pos: [x, 15, z + 30], look: [x, 7, z] }, 1.4); setTimeout(() => openVideo('drivein'), 1500); };
+    grid.appendChild(b);
+  }
+  const n = grid.children.length; ['n5', 'n7', 'n8'].forEach(c => grid.classList.toggle(c, c === 'n' + n));
 }
 const MAP_HOME = { pos: [0, 50, 96], look: [0, 5, -16] };
 function showMap(first) {
@@ -106,7 +116,8 @@ function showMap(first) {
   for (const key of SPACE_ORDER) {
     const sp = MAP_SPOTS[key]; const anchor = new THREE.Object3D(); const b = w.buildings[key];
     anchor.position.set(sp.pos[0], (key === 'temple' ? 9.2 : 0) + sp.pinH, sp.pos[2]); w.scene.add(anchor);
-    const d = labels.add('pin-' + key, '', 'pin fixed'); d.innerHTML = `<b>${SPACES[key].name}</b><small>${SPACES[key].desc}</small>`;
+    const feat = key === 'foodstreet' && SPACE_ORDER[0] === 'foodstreet';
+    const d = labels.add('pin-' + key, '', 'pin fixed' + (feat ? ' feat' : '')); d.innerHTML = feat ? `<b>★ ${SPACES[key].name}</b><small>${STREET.hours} · 지금 입장</small>` : `<b>${SPACES[key].name}</b><small>${SPACES[key].desc}</small>`;
     d.style.pointerEvents = 'auto'; d.onclick = () => focusSpot(key); labels.bind('pin-' + key, anchor, 0);
   }
   app.cam.fov = 38; const hm = mapHome(); const dist = Math.hypot(hm.pos[1] - hm.look[1], hm.pos[2] - hm.look[2]); w.scene.fog.near = dist * 1.05; w.scene.fog.far = dist * 2.6; setCamTween(hm, first ? 0 : 1.2);
@@ -537,11 +548,11 @@ function setupDriveInVideo() {
   addEventListener('resize', () => r.setSize(innerWidth, innerHeight));
 }
 // 먹거리 골목: 부스 카드 · 부스 목록(배치도)
-function boothData(no) { return [...STREET.food, ...STREET.market].find(b => b[0] === no); }
+function boothData(no) { return [...STREET.food, ...STREET.market, ...(STREET.kbelt || [])].find(b => b[0] === no); }
 function openBooth(no) {
-  const b = boothData(no); if (!b) return; const [n, name, menu, price, area] = b; const market = n >= 17;
-  $('#bt-no').textContent = n; $('#bt-no').className = 'bt-no' + (market ? ' mk' : '');
-  $('#bt-name').textContent = name; $('#bt-area').textContent = (market ? '플리마켓 · ' : '먹거리부스 · ') + area;
+  const b = boothData(no); if (!b) return; const [n, name, menu, price, area] = b; const market = n >= 17 && n <= 20; const kb = n >= 21;
+  $('#bt-no').textContent = kb ? 'K' : n; $('#bt-no').className = 'bt-no' + (market ? ' mk' : kb ? ' kb' : '');
+  $('#bt-name').textContent = name; $('#bt-area').textContent = kb ? '어서와존 · 농식품부 K-미식벨트 연계 강릉 향토음식' : (market ? '플리마켓 · ' : '먹거리부스 · ') + area;
   const items = menu.split('·').map(s => s.trim()); const prices = price.split('/').map(s => s.trim()).map(s => /원/.test(s) || !/원/.test(price) ? s : s + '원');
   $('#bt-menu').innerHTML = items.map((it, i) => `<li><span>${esc(it)}</span><b>${esc(prices.length === items.length ? prices[i] : i === 0 ? price : '')}</b></li>`).join('');
   $('#bt-note').textContent = `${STREET.hours} · ${STREET.place} · 가격은 현장 사정에 따라 달라질 수 있어요.`;
@@ -550,8 +561,8 @@ function openBooth(no) {
   openModal('booth');
 }
 function openBoothList() {
-  const card = b => `<button class="bl-item${b[0] >= 17 ? ' mk' : ''}" data-no="${b[0]}"><i>${b[0]}</i><span><b>${esc(b[1])}</b><small>${esc(b[2])}</small></span></button>`;
-  $('#bl-food').innerHTML = STREET.food.map(card).join(''); $('#bl-market').innerHTML = STREET.market.map(card).join('');
+  const card = b => `<button class="bl-item${b[0] >= 21 ? ' kb' : b[0] >= 17 ? ' mk' : ''}" data-no="${b[0]}"><i>${b[0] >= 21 ? 'K' : b[0]}</i><span><b>${esc(b[1])}</b><small>${esc(b[2])}</small></span></button>`;
+  $('#bl-food').innerHTML = STREET.food.map(card).join(''); $('#bl-market').innerHTML = STREET.market.map(card).join(''); $('#bl-kbelt').innerHTML = (STREET.kbelt || []).map(card).join('');
   $('#bl-title').textContent = `${STREET.name} 매대 명단`;
   document.querySelectorAll('#modal-booths .bl-item').forEach(el => el.onclick = () => { closeModal('booths'); const no = +el.dataset.no; const g = (app.world.props.booths || []).find(x => x.userData.booth === no); if (g && app.me) useObject(g); else openBooth(no); });
   openModal('booths');

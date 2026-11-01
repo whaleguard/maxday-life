@@ -3,7 +3,7 @@
 
 // 브랜드: 거래처별 페이지에서 window.MDL_BRAND 로 이름·로고·실시간 공간(ns)을 바꿔 같은 공간을 재사용
 const _B = (typeof window !== 'undefined' && window.MDL_BRAND) || {};
-export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간', videos: _B.videos || {} };
+export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간', videos: _B.videos || {}, cinema: !!_B.cinema };
 const S = BRAND.short;
 
 export const COLORS = { base: '#15272B', panel: '#F4F0E7', accent: '#C9AE73', ink: '#233335' };
@@ -273,6 +273,13 @@ export const STREET = {
     [19, '와글와글', '3D 출력물 클리커·키캡 · 수제 말랑이', '2,000원~', '강릉시'],
     [20, '실버moon', '실버·써지컬 주얼리', '5,000원~', '강릉시'],
   ],
+  // 어서와존 K-미식벨트 (농식품부 연계 강릉 향토음식 — 공식 사이트 소개 기준, 가격은 현장 확인)
+  kbelt: [
+    [21, '어서와존 · 초당두부', '초당순두부 · 두부 요리', '현장 가격', 'K-미식벨트'],
+    [22, '어서와존 · 감자옹심이', '감자옹심이 · 옹심이 빚기 체험', '현장 가격', 'K-미식벨트'],
+    [23, '어서와존 · 강릉짬뽕', '동해 해산물 강릉식 짬뽕', '현장 가격', 'K-미식벨트'],
+    [24, '어서와존 · 강릉커피', '강릉 로스터리 커피 · 로스팅 체험', '현장 가격', 'K-미식벨트'],
+  ],
   shops: ['강릉한우마크나인', '포남보양탕', '만양맛값', '두루두루삼겹', '하루곱창', '인생포차', '신촌장칼국수', '갤러리소풍', '보경카페', '포남1동 행정복지센터'],
   local: [['초당두부', '바닷물로 간을 맞추는 강릉 대표 향토음식'], ['감자옹심이', '강원도 감자를 갈아 빚은 옹심이'], ['강릉짬뽕', '동해 해산물을 넣는 강릉식 짬뽕'], ['강릉커피', '커피의 도시 강릉의 한 잔']],
 };
@@ -280,8 +287,8 @@ export const EXTRA = (_B.extra || []);
 if (EXTRA.includes('foodstreet')) {
   SPACES.foodstreet = {
     key: 'foodstreet', name: STREET.name, desc: '야시장 먹거리 골목', btn: '골목 가기', short: '골목', outdoor: true,
-    room: { w: 34, d: 34, h: 8 }, floor: '#3d3f45', wall: '#2a2c33', ceil: '#0E1F4D',
-    sun: ['#9fb0e8', 0.5], amb: ['#6f7fb8', 0.55], spawn: [0, 0, 15],
+    room: { w: 46, d: 46, h: 8 }, floor: '#3d3f45', wall: '#2a2c33', ceil: '#0E1F4D',
+    sun: ['#9fb0e8', 0.5], amb: ['#6f7fb8', 0.6], spawn: [0, 0, 14],
     actions: [], outfit: 'casual', music: 'street',
   };
   SPACE_ORDER.push('foodstreet');
@@ -317,3 +324,6 @@ export const ARCADE = {
   ],
   photo: { x: 7.4, z: 5.4, url: 'https://mirrorphoto.kr/' },
 };
+
+// 거래처별 공간 선택: window.MDL_BRAND.only = ['foodstreet', 'playground', ...] (이 순서로 버튼·지도 구성)
+if (Array.isArray(_B.only) && _B.only.length) { const keep = _B.only.filter(k => SPACES[k]); SPACE_ORDER.splice(0, SPACE_ORDER.length, ...keep); }
