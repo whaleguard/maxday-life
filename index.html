@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/style.css?v=5">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="mode-garden">
@@ -35,7 +35,7 @@
     <h2 id="sc-name"></h2>
     <p id="sc-desc" class="small"></p>
     <div class="sc-rooms" id="sc-rooms"></div>
-    <button class="btn primary sc-enter" id="sc-enter">입장하기</button>
+    <div class="sc-btns"><button class="btn sc-resv" id="sc-resv" hidden>바로 예약</button><button class="btn primary sc-enter" id="sc-enter">입장하기</button></div>
   </div>
 </section>
 
@@ -180,10 +180,49 @@
   <canvas aria-label="염주 — 위아래로 끌거나 눌러서 한 알씩 넘기세요"></canvas>
   <p class="bd-help">염주를 아래로 끌거나 누르면 한 알씩 넘어가요</p>
 </div>
+
+<div id="modal-resv" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="rv-title">
+  <div class="sheet resv-sheet">
+    <div class="bb-head"><h2 id="rv-title">자리 예약</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <div class="rv-tabs"><button class="rv-tab on" data-tab="book">자리 예약·미리 주문</button><button class="rv-tab" data-tab="mine">내 예약</button></div>
+    <div id="rv-book">
+      <p class="tiny muted" id="rv-hours"></p>
+      <div class="rv-bar"><select id="rv-date" aria-label="날짜"></select><select id="rv-time" aria-label="시간"></select>
+        <div class="rv-size"><button id="rv-minus" aria-label="인원 줄이기">−</button><b id="rv-size">2명</b><button id="rv-plus" aria-label="인원 늘리기">＋</button></div></div>
+      <p class="small" id="rv-free"></p>
+      <div class="rv-plan" id="rv-plan"></div>
+      <div class="rv-legend"><span><i style="background:#8fc49a"></i>예약 가능</span><span><i style="background:#c7c2ba"></i>예약됨</span><span><i style="background:#efe9de"></i>인원 초과</span><span><i style="background:#C9AE73"></i>선택</span></div>
+      <div id="rv-step2">
+        <p class="rv-pick" id="rv-pick"></p>
+        <h3>메뉴 미리 주문 <span class="muted small">(선택)</span></h3>
+        <div class="rv-menu" id="rv-menu"></div>
+        <div class="rv-form"><input id="rv-name" maxlength="12" placeholder="예약자 이름" aria-label="예약자 이름"><input id="rv-phone" inputmode="tel" maxlength="14" placeholder="연락처 (선택)" aria-label="연락처"><input id="rv-memo" maxlength="40" placeholder="요청사항 (선택) 예: 유아 의자" aria-label="요청사항"></div>
+        <p class="small" id="rv-cart"></p>
+        <button class="btn primary rv-submit" id="rv-submit" disabled>자리를 먼저 골라 주세요</button>
+        <p class="tiny muted">결제는 매장에서 합니다(시연판). 연락처는 이 기기와 매장 포스 전송용으로만 쓰고 공개 목록에는 이름 첫 글자와 인원만 보입니다.</p>
+      </div>
+    </div>
+    <div id="rv-mine" hidden></div>
+  </div>
+</div>
+
+<div id="modal-video" class="modal program" hidden role="dialog" aria-modal="true" aria-labelledby="vd-title">
+  <div class="sheet prog-sheet video-sheet">
+    <div class="prog-bar"><strong id="vd-title">영상</strong><button class="x" data-close aria-label="닫기">✕</button></div>
+    <div class="prog-body">
+      <iframe id="vd-frame" title="영상" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen hidden></iframe>
+      <div class="vd-empty" id="vd-empty">
+        <h3>이 스크린에 영상을 연결해 주세요</h3>
+        <p class="small muted">교회·성당·매장의 유튜브 영상 링크를 붙여넣으면 이 스크린에서 바로 재생돼요. (운영 시에는 거래처별로 미리 넣어 둡니다)</p>
+      </div>
+    </div>
+    <div class="vd-foot"><input id="vd-url" placeholder="다른 영상: 유튜브 주소 붙여넣기" aria-label="유튜브 링크"><button class="btn primary" id="vd-save">바꾸기</button><button class="btn" id="vd-reset" hidden>기본 영상</button><a id="vd-search" target="_blank" rel="noopener">유튜브에서 찾기 ↗</a></div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="hint" hidden><div class="hint-card"><b>이렇게 이용해요</b><p id="hint-text"></p><button class="btn primary" id="hint-ok">알겠어요</button></div></div>
 <div id="fatal" class="overlay" hidden><div class="load-card"><p id="fatal-text"></p><div class="load-actions"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div>
 
-<script type="module" src="js/main.js?v=3"></script>
+<script type="module" src="js/main.js?v=5"></script>
 </body>
 </html>
