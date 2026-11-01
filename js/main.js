@@ -1,7 +1,7 @@
 // 맥스데이 라이프 — 앱 진입점: 지도(입구) → 공간 입장, 3인칭 캐릭터 조작, 실시간 동기화, 공간 기능(염주·말씀·찬송·샵·12지신·기계)
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY } from './config.js';
+import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY } from './config.js';
 import { createRenderer, Labels, disposeObject } from './engine.js';
 import { buildInterior } from './scenes.js';
 import { buildMap, MAP_SPOTS } from './world/map.js';
@@ -36,7 +36,14 @@ const clock = new THREE.Clock();
 let beads;
 
 /* ---------------- 시작 ---------------- */
+function applyBrand() {
+  document.title = `${BRAND.ko} · ${BRAND.title}`;
+  const img = $('#brand-logo'); if (img) { img.src = BRAND.logo; img.alt = BRAND.en; }
+  const ko = $('#brand-ko'); if (ko) ko.textContent = BRAND.ko;
+  const hs = $('#help-spaces'); if (hs) hs.textContent = SPACE_ORDER.map(k => SPACES[k].name).join(' · ');
+}
 function boot() {
+  applyBrand();
   try {
     renderer = createRenderer($('#gl'), settings.low);
     app.renderer = renderer;

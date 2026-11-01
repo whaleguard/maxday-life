@@ -1,7 +1,10 @@
 // 맥스데이 라이프 — 디자인 기준 v1.1 (GPT 확정) + v1.2 추가(놀이터·기계·트리·다도실/카페)
 // 단위: m, Y 위쪽, 내부는 방 중심 바닥 (0,0,0), 중심 시설은 −Z
 
-export const BRAND = { ko: '맥스데이 라이프', en: 'MAX DAY LIFE' };
+// 브랜드: 거래처별 페이지에서 window.MDL_BRAND 로 이름·로고·실시간 공간(ns)을 바꿔 같은 공간을 재사용
+const _B = (typeof window !== 'undefined' && window.MDL_BRAND) || {};
+export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간' };
+const S = BRAND.short;
 
 export const COLORS = { base: '#15272B', panel: '#F4F0E7', accent: '#C9AE73', ink: '#233335' };
 
@@ -27,7 +30,7 @@ export const PROGRAMS = {
 
 export const SPACES = {
   temple: {
-    key: 'temple', name: '맥스데이사', desc: '불교 법당', btn: '절로 가기', short: '절',
+    key: 'temple', name: S + '사', desc: '불교 법당', btn: '절로 가기', short: '절',
     room: { w: 14, d: 16, h: 6.6 },
     floor: '#846044', wall: '#D8C7A6', ceil: '#624735',
     sun: ['#FFD9A3', 1.8], amb: ['#D7C3A6', 0.75], spawn: [0, 0, 6.8],
@@ -36,7 +39,7 @@ export const SPACES = {
     actions: ['palms', 'bow'], outfit: 'robe', music: 'temple',
   },
   church: {
-    key: 'church', name: '맥스데이교회', desc: '개신교 예배당', btn: '교회로 가기', short: '교회',
+    key: 'church', name: S + '교회', desc: '개신교 예배당', btn: '교회로 가기', short: '교회',
     room: { w: 14, d: 18, h: 7 },
     floor: '#A58664', wall: '#EEE6D5', ceil: '#D9CBB7',
     sun: ['#FFF0CF', 2.0], amb: ['#E8DDC6', 0.85], spawn: [0, 0, 7.8],
@@ -45,7 +48,7 @@ export const SPACES = {
     actions: ['pray'], outfit: 'casual', music: 'church',
   },
   cathedral: {
-    key: 'cathedral', name: '맥스데이성당', desc: '천주교 성당', btn: '성당으로 가기', short: '성당',
+    key: 'cathedral', name: S + '성당', desc: '천주교 성당', btn: '성당으로 가기', short: '성당',
     room: { w: 16, d: 20, h: 9 },
     floor: '#B8B3A8', wall: '#CFC7B8', ceil: '#AFA99E',
     sun: ['#E2E8FF', 1.6], amb: ['#BFC9DC', 0.8], spawn: [0, 0, 8.8],
@@ -55,7 +58,7 @@ export const SPACES = {
     candles: { table: [5.8, 0, 6.3], size: [1.8, 0.9, 0.8], rows: 4, cols: 6, dx: 0.26, dz: 0.18, access: [4.5, 0, 6.3], ttlMin: 10 },
   },
   playground: {
-    key: 'playground', name: '맥스데이 놀이터', desc: '운세·뽑기·놀이방', btn: '놀이터로 가기', short: '놀이터',
+    key: 'playground', name: S + ' 놀이터', desc: '운세·뽑기·놀이방', btn: '놀이터로 가기', short: '놀이터',
     room: { w: 24, d: 22, h: 5.5 },
     floor: '#DCCFB8', aisle: '#EEE5D5', wall: '#F2E8D7', ceil: '#E4D8C2',
     sun: ['#FFF0D0', 2.0], amb: ['#DCE8E3', 0.9], spawn: [0, 0, 9.5],
@@ -98,7 +101,7 @@ export const MQTT_BROKERS = [
   'wss://broker.hivemq.com:8884/mqtt',
   'wss://test.mosquitto.org:8081',
 ];
-export const MQTT_NS = 'maxdaylife/v1';
+export const MQTT_NS = _B.ns || 'maxdaylife/v1';
 
 // v1.2 — 정원 4번째 갈래 + 정원 기계
 export const GARDEN = {
