@@ -4,6 +4,7 @@
 // 데이터: 모든 상태는 메모리에만 보관(위치 변경을 DB에 쌓지 않음). 세션은 접속 종료 후 유예 15초 뒤 정리.
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import fs from 'fs';
 
 const PORT = +process.env.PORT || 8787;
 const CAPACITY = +process.env.ROOM_CAPACITY || 20;
@@ -12,6 +13,12 @@ const CANDLE_TTL_MS = 10 * 60000; // 촛불 10분 뒤 꺼짐
 const SPACES = new Set(['temple', 'church', 'cathedral', 'playground']);
 const SEAT_COUNT = { temple: 64, church: 64, cathedral: 64, playground: 64 };
 const CANDLE_COUNT = 24;
+
+// 카페·식당 예약 (파일에 저장 — 포스 연동 시 여기서 포스 API 로 전달)
+const RESV_FILE = process.env.RESV_FILE || './reservations.json';
+let resv = {}; try { resv = JSON.parse(fs.readFileSync(RESV_FILE, 'utf8')); } catch (e) {}
+const saveResv = () => { try { fs.writeFileSync(RESV_FILE, JSON.stringify(resv)); } catch (e) { console.error(e); } };
+const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 
 /** rooms: key `${space}:${n}` -> { space, n, members: Map<sid, member>, seats: Map<idx, sid>, candles: Map<idx, data> } */
 const rooms = new Map();
@@ -94,6 +101,23 @@ wss.on('connection', ws => {
         room.members.set(me.sid, me);
         broadcast(room, { type: 'peer', sid: me.sid, state: me.state }, me.sid);
         return reply({ ok: true, room: n, redirected, snapshot: snapshot(room) });
+      }
+      case 'resvList': {
+        const key = `${m.store}/${m.date}`; const list = {};
+        for (const r of Object.values(resv[key] || {})) list[r.time + '|' + r.table] = { time: r.time, table: r.table, size: r.size, nm: r.nm, id: r.id };
+        return reply({ ok: true, list });
+      }
+      case 'resvSave': {
+        const r = m.rec || {}; if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date || '') || !/^\d{2}:\d{2}$/.test(r.time || '') || !r.table) return reply({ ok: false, reason: 'bad' });
+        const key = `${r.store}/${r.date}`; resv[key] ||= {};
+        if (Object.values(resv[key]).some(x => x.table === r.table && Math.abs(toMin(x.time) - toMin(r.time)) < 90)) return reply({ ok: false, reason: 'taken' });
+        resv[key][r.id] = { id: String(r.id).slice(0, 40), store: r.store, date: r.date, time: r.time, table: String(r.table).slice(0, 10), size: +r.size || 1, nm: String(r.nm || '').slice(0, 8), items: +r.items || 0, sid: m.sid || '', t: Date.now() };
+        saveResv(); return reply({ ok: true });
+      }
+      case 'resvCancel': {
+        const r = m.rec || {}; const key = `${r.store}/${r.date}`;
+        if (resv[key] && resv[key][r.id]) { delete resv[key][r.id]; saveResv(); }
+        return reply({ ok: true });
       }
       case 'rooms': {
         const counts = {}; for (const r of rooms.values()) if (r.space === m.space && r.members.size) counts[r.n] = r.members.size;
