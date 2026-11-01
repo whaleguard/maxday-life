@@ -121,9 +121,9 @@ function updateCamTween(dt) {
 async function focusSpot(key) {
   if (app.mode !== 'map' || app.busy) return;
   app.focus = key;
-  const v = MAP_SPOTS[key].view; const a = innerWidth / innerHeight; const k = a < 1 ? 1.5 : 1.1;
+  const v = MAP_SPOTS[key].view; const a = innerWidth / innerHeight; const k = a < 1 ? 1.5 : 1.55;
   const dir = new THREE.Vector3(v.pos[0] - v.look[0], v.pos[1] - v.look[1], v.pos[2] - v.look[2]).multiplyScalar(k);
-  const look = [v.look[0], v.look[1] - (a < 1 ? 5 : 2.5), v.look[2]];
+  const look = [v.look[0], v.look[1] - (a < 1 ? 5 : 3.5), v.look[2]];
   setCamTween({ pos: [v.look[0] + dir.x, v.look[1] + dir.y, v.look[2] + dir.z], look }, 1.5);
   document.body.classList.add('focused');
   const sp = SPACES[key], card = $('#spot-card');
