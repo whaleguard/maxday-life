@@ -2,7 +2,7 @@
 // 작게 보이다가 누르면 카메라가 그 건물로 날아가 크게 보여줌
 import * as THREE from 'three';
 import { M, GOLD, box, place, shadow, rbox, hanokRoof, grassTex, stoneTex, skyTex, tileRoofTex, lotusLantern } from './common.js';
-import { GARDEN, BRAND } from '../config.js';
+import { GARDEN, BRAND, SPACES, STREET } from '../config.js';
 
 export const MAP_SPOTS = {
   temple: { pos: [-30, 0, -40], view: { pos: [-30, 17, -14], look: [-30, 9, -40] }, pinH: 9 },
@@ -12,6 +12,8 @@ export const MAP_SPOTS = {
   cafe: { pos: [-34, 0, 21], view: { pos: [-34, 7, 36], look: [-34, 2, 20] }, pinH: 6.5 },
   restaurant: { pos: [33, 0, 15], view: { pos: [33, 7, 31], look: [33, 2, 14] }, pinH: 7 },
 };
+if (SPACES.foodstreet) MAP_SPOTS.foodstreet = { pos: [-12, 0, -11], view: { pos: [-12, 12, 12], look: [-12, 2, -12] }, pinH: 9 };
+if (SPACES.arcade) MAP_SPOTS.arcade = { pos: [43, 0, -9], view: { pos: [43, 8, 8], look: [43, 2.5, -10] }, pinH: 7 };
 
 // 지형 높이
 function riverZ(x) { return 3 + Math.sin(x * 0.06) * 4 + Math.sin(x * 0.13) * 1.5; }
@@ -98,6 +100,8 @@ export function buildMap({ low }) {
   reg('playground', playgroundPark(anim));
   reg('cafe', cafeBuilding());
   reg('restaurant', restaurantBuilding());
+  if (MAP_SPOTS.foodstreet) reg('foodstreet', foodStreetMap(anim));
+  if (MAP_SPOTS.arcade) reg('arcade', arcadeBuilding(anim));
   const di = driveIn(anim); scene.add(di); clickables.push(di);
   // 12지신 석상 — 절로 올라가는 돌계단 양옆 (누르면 띠별 운세)
   ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'].forEach((id, i) => {
@@ -451,5 +455,54 @@ function driveIn(anim) {
   const st2 = new THREE.CanvasTexture(sc2); st2.colorSpace = THREE.SRGBColorSpace;
   const sn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 0.12), [M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), M('#2a1f1a'), new THREE.MeshBasicMaterial({ map: st2, toneMapped: false }), M('#2a1f1a')]); sn.position.y = 2.6; sg.add(sn);
   g.traverse(o => { o.userData.videoScreen = 'drivein'; });
+  return shadow(g);
+}
+
+/* ---------- 먹거리 골목 (지도용 축소 모형): 주황 천막 줄 + 파라솔 + 전구 줄 + 입구 아치 ---------- */
+function foodStreetMap(anim) {
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.foodstreet.pos; g.position.set(cx, heightAt(cx, cz), cz); g.scale.setScalar(1.35);
+  place(box(13, 0.2, 10, M('#3d3f45', { roughness: 0.95 })), 0, 0.1, 0, g);
+  place(box(13, 0.22, 1.0, M('#8d8a84')), 0, 0.11, -4.6, g); place(box(13, 0.22, 1.0, M('#8d8a84')), 0, 0.11, 4.6, g);
+  const tent = (x, z, col) => { const t = new THREE.Group(); t.position.set(x, 0.2, z); g.add(t);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) place(box(0.05, 1.3, 0.05, M('#ddd')), sx * 0.6, 0.65, sz * 0.6, t);
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.92, 0.6, 4), M(col)); c.rotation.y = Math.PI / 4; c.position.y = 1.6; t.add(c);
+    place(box(1.1, 0.5, 0.4, M('#f4efe6')), 0, 0.25, 0.3, t); };
+  for (let i = 0; i < 6; i++) { tent(-5 + i * 1.8, -2.6, '#F07A1A'); tent(-5 + i * 1.8, 2.6, i >= 4 ? '#F2C230' : '#F07A1A'); }
+  for (const x of [-3.6, 0, 3.6]) { const p = new THREE.Group(); p.position.set(x, 0.2, 0); g.add(p); place(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6), M('#eee')), 0, 0.75, 0, p); place(new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.3, 8), M('#F07A1A')), 0, 1.5, 0, p); place(box(0.5, 0.05, 0.9, M('#d98a3a')), 0, 0.45, 0, p); }
+  // 전구 줄
+  const bm = new THREE.MeshBasicMaterial({ color: '#ffd9a0' }); const pts = [];
+  for (let k = 0; k < 5; k++) for (let i = 0; i <= 12; i++) { const t = i / 12; pts.push([-5.4 + k * 2.6 + t * 1.2, 2.6 - Math.sin(t * Math.PI) * 0.4, -3.8 + t * 7.6]); }
+  const bi = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 6, 4), bm, pts.length); const mt = new THREE.Matrix4(); pts.forEach((p, i) => { mt.makeTranslation(...p); bi.setMatrixAt(i, mt); }); g.add(bi);
+  // 입구 아치 + 로고
+  const arch = new THREE.Group(); arch.position.set(0, 0.2, 5.1); g.add(arch);
+  for (const sx of [-3.2, 3.2]) place(box(0.25, 3.2, 0.25, M('#0E1F4D')), sx, 1.6, 0, arch);
+  place(box(6.8, 1.1, 0.15, M('#0E1F4D')), 0, 3.2, 0, arch);
+  const lt = new THREE.TextureLoader().load('assets/tex/yongma_logo-yongma-white.webp', t => { t.colorSpace = THREE.SRGBColorSpace; });
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.97), new THREE.MeshBasicMaterial({ map: lt, transparent: true, toneMapped: false })); logo.position.set(0, 3.2, 0.09); arch.add(logo);
+  const ab = new THREE.MeshBasicMaterial({ color: '#ffd38a' }); for (let i = 0; i <= 12; i++) place(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), ab), -3.3 + i * 0.55, 2.6, 0.1, arch);
+  // 마스코트 용지·마루
+  for (const [img, x, a] of [['mascot-yong', -4.6, 600 / 669], ['mascot-ma', 4.6, 600 / 850]]) { const t = new THREE.TextureLoader().load(`assets/tex/yongma_${img}.webp`, tt => { tt.colorSpace = THREE.SRGBColorSpace; }); const m = new THREE.Mesh(new THREE.PlaneGeometry(2.0 * a, 2.0), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide })); m.position.set(x, 1.2, 5.2); m.userData.billboard = true; g.add(m); }
+  const pl = new THREE.PointLight('#ffb870', 10, 14, 1.6); pl.position.set(0, 3.5, 0); g.add(pl);
+  return shadow(g);
+}
+
+/* ---------- 게임장 (네온 건물) ---------- */
+function arcadeBuilding(anim) {
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.arcade.pos; g.position.set(cx, heightAt(cx, cz), cz);
+  place(box(9.4, 0.3, 7.4, M('#5a5468')), 0, 0.15, 0.4, g);
+  place(box(8.6, 4.4, 5.6, M('#2f2a45', { roughness: 0.6 })), 0, 2.5, -0.4, g);
+  place(box(9.0, 0.3, 6.0, M('#1d1830')), 0, 4.85, -0.4, g);
+  const neonCols = ['#ff4fa0', '#4fd1ff', '#ffd84f'];
+  const strips = [];
+  for (let i = 0; i < 3; i++) { const s = place(box(8.7, 0.08, 0.08, new THREE.MeshBasicMaterial({ color: neonCols[i] })), 0, 0.6 + i * 1.75, 2.42, g); strips.push(s); }
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160; const x = c.getContext('2d');
+  x.fillStyle = '#16102a'; x.fillRect(0, 0, 512, 160); x.shadowColor = '#ff4fa0'; x.shadowBlur = 24; x.fillStyle = '#ff9ad0'; x.font = '900 88px sans-serif'; x.textAlign = 'center'; x.fillText('GAME', 256, 100); x.shadowBlur = 0; x.fillStyle = '#9fe8ff'; x.font = '700 30px "Noto Sans KR", sans-serif'; x.fillText(SPACES.arcade.name, 256, 145);
+  const st = new THREE.CanvasTexture(c); st.colorSpace = THREE.SRGBColorSpace;
+  place(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.62), new THREE.MeshBasicMaterial({ map: st, toneMapped: false })), 0, 3.9, 2.43, g);
+  const door = place(box(2.4, 2.4, 0.05, new THREE.MeshStandardMaterial({ color: '#c9b8ff', emissive: '#7a5cff', emissiveIntensity: 0.9 })), 0, 1.35, 2.42, g);
+  for (const sx of [-3.2, 3.2]) place(box(1.6, 1.6, 0.05, new THREE.MeshStandardMaterial({ color: '#ffd0e6', emissive: '#ff4fa0', emissiveIntensity: 0.6 })), sx, 1.6, 2.42, g);
+  for (const sx of [-3.8, 3.8]) { const m = new THREE.Group(); m.position.set(sx, 0.3, 3.4); g.add(m); place(box(0.8, 1.6, 0.7, M(sx < 0 ? '#ff6e9a' : '#5ed3c4')), 0, 0.8, 0, m); place(new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), new THREE.MeshPhysicalMaterial({ color: '#fff', transparent: true, opacity: 0.35 })), 0, 1.9, 0, m); }
+  const pl = new THREE.PointLight('#b68cff', 8, 12, 1.6); pl.position.set(0, 3, 4); g.add(pl);
+  anim.push((t, red) => { if (red) return; strips.forEach((s, i) => s.material.color.set(neonCols[(i + Math.floor(t * 1.5)) % 3])); });
   return shadow(g);
 }
