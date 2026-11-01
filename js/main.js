@@ -1,7 +1,7 @@
 // 맥스데이 라이프 — 앱 진입점: 지도(입구) → 공간 입장, 3인칭 캐릭터 조작, 실시간 동기화, 공간 기능(염주·말씀·찬송·샵·12지신·기계)
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY , VIDEOS } from './config.js';
+import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY, VIDEOS, STREET, ARCADE } from './config.js';
 import { createRenderer, Labels, disposeObject } from './engine.js';
 import { buildInterior } from './scenes.js';
 import { buildMap, MAP_SPOTS, DRIVE_IN } from './world/map.js';
@@ -38,7 +38,7 @@ const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
 const clock = new THREE.Clock();
 let beads, reserve;
 const isStore = k => !!STORES[k];
-const roomWord = k => k === 'temple' ? '법당' : k === 'playground' ? '놀이방' : isStore(k) ? '매장' : '예배실';
+const roomWord = k => k === 'temple' ? '법당' : k === 'playground' ? '놀이방' : isStore(k) ? '매장' : k === 'foodstreet' ? '골목' : k === 'arcade' ? '게임장' : '예배실';
 
 /* ---------------- 시작 ---------------- */
 function applyBrand() {
@@ -83,7 +83,7 @@ function boot() {
 
 /* ---------------- 지도(입구) ---------------- */
 function buildEnterButtons() {
-  const grid = $('#enter-grid'); grid.innerHTML = '';
+  const grid = $('#enter-grid'); grid.innerHTML = ''; grid.classList.toggle('n8', SPACE_ORDER.length === 8); grid.classList.toggle('n7', SPACE_ORDER.length === 7);
   for (const key of SPACE_ORDER) {
     const sp = SPACES[key], st = BUTTON_STYLE[key];
     const b = document.createElement('button'); b.className = 'enter-btn'; b.dataset.space = key;
@@ -166,6 +166,8 @@ const SPOT_DESC = {
   playground: '공원 놀이터. 운세·타로·게임 기계, 랜덤박스, 12지신 마당, 어린이 놀이방.',
   cafe: '창가 바·소파석·홀·단체석이 있는 카페. 미리 둘러보고 원하는 자리를 골라 예약·주문까지.',
   restaurant: '창가·홀·원탁·룸이 있는 한식당. 오픈 주방·셀프바를 둘러보고 자리 예약과 미리 주문.',
+  foodstreet: `${STREET.place} 야시장 골목. 먹거리부스 16곳·플리마켓 4곳·골목어게인 무대·접객 파라솔 (${STREET.hours}).`,
+  arcade: '게임·운세 기계, 인형뽑기·랜덤박스, 키즈 존, 위드메모리 미러포토 부스.',
 };
 function unfocus() { app.focus = null; document.body.classList.remove('focused'); $('#spot-card').hidden = true; setCamTween(mapHome(), 1.3); }
 
@@ -374,6 +376,10 @@ function doAction(a) {
       if (me.act === 'beads') { me.act = 'sit'; me.char.setUpper(null); beads.close(); }
       else { me.act = 'beads'; me.char.setUpper('beads'); beads.open(+(ss.get('mdl_beads') || 0)); }
       break;
+    case 'booths': openBoothList(); break;
+    case 'stagevid': openVideo('stage'); break;
+    case 'route': window.open(STREET.map, '_blank', 'noopener'); break;
+    case 'photo': goFeature('photo', openPhoto); break;
     case 'drink': {
       if (me.act === 'drink') return;
       const ax = ANNEX[app.space]; const sec = ax?.drinkSec || (app.space === 'restaurant' ? 4 : 3);
@@ -414,8 +420,10 @@ function renderActions() {
     B('이 자리 예약', 'resv'); B('일어나기', 'stand', 'sub'); return;
   }
   if (me.seat < 0) {
-    const hints = { temple: '빈 방석을 눌러 앉으세요. 화면을 끌면 둘러볼 수 있어요.', church: '빈 의자를 눌러 앉으세요. 말씀대·찬송대·서점도 눌러 보세요.', cathedral: '장의자에 앉거나 봉헌초를 켜 보세요.', playground: '기계·랜덤박스·12지신 석상을 눌러 보세요.' };
+    const hints = { temple: '빈 방석을 눌러 앉으세요. 화면을 끌면 둘러볼 수 있어요.', church: '빈 의자를 눌러 앉으세요. 말씀대·찬송대·서점도 눌러 보세요.', cathedral: '장의자에 앉거나 봉헌초를 켜 보세요.', playground: '기계·랜덤박스·12지신 석상을 눌러 보세요.' , foodstreet: '부스를 누르면 걸어가서 메뉴를 볼 수 있어요. 주황 파라솔 자리에 앉아 맛보세요.', arcade: '기계를 누르면 걸어가서 바로 플레이해요. 오른쪽 인형뽑기, 앞쪽 미러포토 부스도 있어요.' };
     hint.textContent = hints[app.space] || '';
+    if (app.space === 'foodstreet') { B('부스 목록', 'booths'); B('무대 영상', 'stagevid', 'sub'); B('길찾기', 'route', 'sub'); }
+    if (app.space === 'arcade') { B('미러포토 부스', 'photo'); }
     if (app.space === 'cathedral') B('봉헌초로 가기', 'candles');
     if (app.space === 'church' || app.space === 'cathedral') { B('성경 말씀', 'bible'); B(app.space === 'church' ? '찬송 듣기' : '성가 듣기', 'hymn'); }
     if (app.world.props?.shop) B(app.space === 'temple' ? '불교용품' : app.space === 'church' ? '서점' : '성물방', 'shop', 'sub');
@@ -427,6 +435,11 @@ function renderActions() {
     B('일어나기', 'stand', 'sub'); return;
   }
   if (seat && seat.zone === 'rest') { hint.textContent = '잠시 쉬어가세요.'; B('일어나기', 'stand', 'sub'); return; }
+  if (seat && seat.zone === 'dine' && app.space === 'foodstreet') {
+    hint.textContent = '접객 파라솔이에요. 부스에서 고른 음식을 맛보세요.';
+    B(me.act === 'drink' ? '먹는 중…' : '맛보기', 'drink', me.act === 'drink' ? 'on' : '').disabled = me.act === 'drink';
+    B('부스 목록', 'booths', 'sub'); B('일어나기', 'stand', 'sub'); return;
+  }
   if (app.space === 'temple') {
     if (me.act === 'bow') { B('절하는 중…', 'bow', 'on').disabled = true; B('일어나기', 'stand', 'sub'); return; }
     B(me.act === 'palms' ? '합장 마치기' : '합장', 'palms', me.act === 'palms' ? 'on' : '');
@@ -466,6 +479,9 @@ function useObject(obj) {
     if (ud.feature === 'bible') return openBibleModal();
     if (ud.feature === 'hymn') return openHymns();
     if (ud.feature === 'shop') return openShop();
+    if (ud.booth) { me.act = 'stand'; publish(); renderActions(); return openBooth(ud.booth); }
+    if (ud.feature === 'boothmap') return openBoothList();
+    if (ud.feature === 'photo') return openPhoto();
     const info = ud.machine; if (!info) return;
     me.act = 'machine'; me.char.setUpper('use'); me.machine = info.id;
     if (ud.face !== undefined) me.ry = ud.face + Math.PI;
@@ -487,8 +503,8 @@ function openProgram(prog) {
   f.src = url; openModal('program');
 }
 // 영상 스크린: 유튜브 링크를 넣으면 재생 (브랜드 설정 BRAND.videos 또는 이 기기에서 붙여넣기)
-const VIDEO_TITLE = { church: '예배·설교 영상', cathedral: '미사 영상', cafe: '카페 영상', restaurant: '식당 영상', drivein: '자동차 극장 · 광고' };
-const VIDEO_SEARCH = { church: '주일예배 설교', cathedral: '매일미사', cafe: '카페 브이로그', restaurant: '한식당', drivein: '광고' };
+const VIDEO_TITLE = { church: '예배·설교 영상', cathedral: '미사 영상', cafe: '카페 영상', restaurant: '식당 영상', drivein: '자동차 극장 · 광고', stage: '골목어게인 무대 영상' };
+const VIDEO_SEARCH = { church: '주일예배 설교', cathedral: '매일미사', cafe: '카페 브이로그', restaurant: '한식당', drivein: '광고', stage: '용마미식거리 강릉' };
 function ytId(s) { s = (s || '').trim(); const m = s.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/); return m ? m[1] : /^[\w-]{11}$/.test(s) ? s : ''; }
 function openVideo(kind) {
   const key = 'mdl_video_' + (BRAND.short || '') + '_' + kind;
@@ -520,6 +536,30 @@ function setupDriveInVideo() {
   driveCss = { r, scene };
   addEventListener('resize', () => r.setSize(innerWidth, innerHeight));
 }
+// 먹거리 골목: 부스 카드 · 부스 목록(배치도)
+function boothData(no) { return [...STREET.food, ...STREET.market].find(b => b[0] === no); }
+function openBooth(no) {
+  const b = boothData(no); if (!b) return; const [n, name, menu, price, area] = b; const market = n >= 17;
+  $('#bt-no').textContent = n; $('#bt-no').className = 'bt-no' + (market ? ' mk' : '');
+  $('#bt-name').textContent = name; $('#bt-area').textContent = (market ? '플리마켓 · ' : '먹거리부스 · ') + area;
+  const items = menu.split('·').map(s => s.trim()); const prices = price.split('/').map(s => s.trim()).map(s => /원/.test(s) || !/원/.test(price) ? s : s + '원');
+  $('#bt-menu').innerHTML = items.map((it, i) => `<li><span>${esc(it)}</span><b>${esc(prices.length === items.length ? prices[i] : i === 0 ? price : '')}</b></li>`).join('');
+  $('#bt-note').textContent = `${STREET.hours} · ${STREET.place} · 가격은 현장 사정에 따라 달라질 수 있어요.`;
+  $('#bt-route').href = STREET.map; $('#bt-site').href = STREET.site + 'booths.html';
+  $('#bt-taste').hidden = market; $('#bt-taste').onclick = () => { closeModal('booth'); const free = app.world.seats.filter(s => s.zone === 'dine' && !seatOwner(s.idx)); if (free.length) { const me = app.me; free.sort((a, c) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(c.x - me.x, c.z - me.z)); trySit(free[0].idx); toast('가까운 파라솔 자리로 가요.'); } else toast('빈 파라솔 자리가 없어요.'); };
+  openModal('booth');
+}
+function openBoothList() {
+  const card = b => `<button class="bl-item${b[0] >= 17 ? ' mk' : ''}" data-no="${b[0]}"><i>${b[0]}</i><span><b>${esc(b[1])}</b><small>${esc(b[2])}</small></span></button>`;
+  $('#bl-food').innerHTML = STREET.food.map(card).join(''); $('#bl-market').innerHTML = STREET.market.map(card).join('');
+  $('#bl-title').textContent = `${STREET.name} 매대 명단`;
+  document.querySelectorAll('#modal-booths .bl-item').forEach(el => el.onclick = () => { closeModal('booths'); const no = +el.dataset.no; const g = (app.world.props.booths || []).find(x => x.userData.booth === no); if (g && app.me) useObject(g); else openBooth(no); });
+  openModal('booths');
+}
+function openPhoto() {
+  $('#ph-go').href = ARCADE.photo.url; openModal('photo');
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function openBibleModal() { openModal('bible'); openBible().catch(e => { console.error(e); $('#bb-out').innerHTML = '<p class="muted">말씀을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>'; }); if (app.me) { app.me.char.setUpper('read'); app.me.act = app.me.seat >= 0 ? 'sit' : 'stand'; } }
 function openHymns() {
   const list = $('#hymn-list'); list.innerHTML = '';
@@ -687,7 +727,7 @@ function updatePeopleCount() { $('#people-n').textContent = String(1 + app.peers
 function spawnNpcs() {
   app.npcs.forEach(n => { n.char.dispose(); labels.remove(n.id); }); app.npcs = [];
   if (!settings.npc || !app.world) return;
-  const key = app.space; const want = { temple: 7, church: 5, cathedral: 5, playground: 6 }[key] || 0;
+  const key = app.space; const want = { temple: 7, church: 5, cathedral: 5, playground: 6, foodstreet: 8, arcade: 3 }[key] || 0;
   const free = app.world.seats.filter(s => s.zone !== 'rest' || key === 'playground');
   const used = new Set();
   for (let i = 0; i < want; i++) {
@@ -781,6 +821,7 @@ function handleTap(x, y) {
     const cand = findUp(h.object, 'candleIdx'); if (cand) { tryCandle(cand.userData.candleIdx); return; }
     const scn = findUp(h.object, 'videoScreen'); if (scn) { openVideo(scn.userData.videoScreen); return; }
     const tb = findUp(h.object, 'tableId'); if (tb) { openModal('resv'); reserve.open(app.space, { table: tb.userData.tableId }); return; }
+    const bt = findUp(h.object, 'booth'); if (bt) { useObject(bt); return; }
     const z = findUp(h.object, 'zodiac'); if (z) { useObject(z); return; }
     const f = findUp(h.object, 'feature'); if (f) { useObject(f); return; }
     const m = findUp(h.object, 'machine'); if (m) { useObject(m); return; }
@@ -872,6 +913,8 @@ function showHintOnce(key) {
     church: '빈 의자를 누르면 앉아요. 말씀대에서 성경 말씀을, 찬송대에서 찬송을 들을 수 있어요. 오른쪽 옆 카페와 서점도 있어요.',
     cathedral: '장의자에 앉아 기도하거나, 오른쪽 앞 봉헌초에서 촛불을 켜세요. 왼쪽 옆에 카페가 있어요.',
     playground: '기계를 누르면 걸어가서 프로그램이 열려요. 12지신 마당에서 내 띠를 눌러 보고, 랜덤박스로 소품도 뽑아 보세요.',
+    foodstreet: `${STREET.name}에 오신 걸 환영해요! 실제 매대 명단 그대로 부스 20곳이 있어요. 부스를 누르면 메뉴·가격을 보고, 가운데 무대 스크린을 누르면 공연 영상이 나와요.`,
+    arcade: '게임·운세 기계를 누르면 걸어가서 바로 플레이해요. 인형뽑기에선 머리 소품을 뽑을 수 있고, 미러포토 부스도 있어요.',
   }[key];
   $('#hint-text').textContent = txt; $('#hint').hidden = false;
 }
@@ -943,4 +986,4 @@ function loop() {
 
 boot();
 // 검수용 훅 (실시간 검증 스크립트에서 사용)
-window.__mdlTest = { trySit, tryCandle, doAction, net, seatOwner, enterSpace, leaveToMap, get peers() { return [...app.peers.keys()]; } };
+window.__mdlTest = { trySit, tryCandle, doAction, net, seatOwner, enterSpace, leaveToMap, tap: (x, y) => handleTap(x, y), pickAt: (x, y) => pick(x, y, [...app.world.clickables, app.world.floorHit || []].flat()).slice(0, 4).map(h => { let o = h.object, k = []; while (o) { k.push(Object.keys(o.userData).join(',')); o = o.parent; } return k.join(' < '); }), get peers() { return [...app.peers.keys()]; } };

@@ -5,6 +5,7 @@ import { SPACES, GARDEN, PLAYGROUND, TEMPLE_MACHINE, XMAS_TREE, ANNEX, PROGRAMS,
 import { NavGrid, textTexture } from './engine.js';
 import { M as CM, GOLD, rbox, loadTex, woodFloorTex, stoneTex, plasterTex, dancheongTex, plantPot, lotusLantern, candleStick } from './world/common.js';
 import { starGeo } from './character.js';
+import { buildFoodStreet, buildArcade } from './world/street.js';
 
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0, ...o });
 const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -68,7 +69,8 @@ export function buildInterior(key, { low, reduced }) {
   const { w, d, h } = sp.room;
   const X0 = ax && ax.side < 0 ? ax.x0 : -w / 2, X1 = ax && ax.side > 0 ? ax.x1 : w / 2;
   const Z0 = -d / 2, Z1 = d / 2;
-  const tone = { temple: ['#1a1310', '#2a1d16'], church: ['#2b241c', '#3a3026'], cathedral: ['#151a22', '#232a35'], playground: ['#2a3336', '#3a4548'], cafe: ['#2b241c', '#3a3026'], restaurant: ['#241c17', '#33281f'] }[key];
+  const tone = { temple: ['#1a1310', '#2a1d16'], church: ['#2b241c', '#3a3026'], cathedral: ['#151a22', '#232a35'], playground: ['#2a3336', '#3a4548'], cafe: ['#2b241c', '#3a3026'], restaurant: ['#241c17', '#33281f'], foodstreet: ['#0E1F4D', '#16224a'], arcade: ['#140f24', '#1d1830'] }[key];
+  const outdoor = !!sp.outdoor;
   scene.background = new THREE.Color(tone[0]);
   scene.fog = new THREE.Fog(tone[0], 22, 48);
 
@@ -88,19 +90,19 @@ export function buildInterior(key, { low, reduced }) {
     : woodFloorTex('#d7c3a0', { planks: 10, repeat: [w / 3, d / 3], seed: 12, light: 0.08 });
   const floorMat = STORES[key] ? photoMat(key === 'cafe' ? 'parquet' : 'terrazzo', w / (key === 'cafe' ? 2.2 : 2.6), d / (key === 'cafe' ? 2.2 : 2.6), { roughness: key === 'cafe' ? 0.45 : 0.32, nor: true, color: key === 'cafe' ? '#e8d8c4' : '#ffffff' })
     : new THREE.MeshStandardMaterial({ map: floorTex, roughness: key === 'cathedral' ? 0.55 : 0.62, metalness: 0, envMapIntensity: 0.6 });
-  const mainFloor = box(w, 0.3, d, floorMat); mainFloor.position.set(0, -0.15, 0); mainFloor.receiveShadow = true; scene.add(mainFloor);
+  const mainFloor = box(w, 0.3, d, floorMat); mainFloor.position.set(0, -0.15, 0); mainFloor.receiveShadow = true; if (!outdoor) scene.add(mainFloor);
   // 벽
   const wallMat = STORES[key] ? new THREE.MeshStandardMaterial({ map: plasterTex(key === 'cafe' ? '#efe7da' : '#eadfcb', { repeat: [3, 2], amt: 0.035 }), roughness: 0.93 }) : new THREE.MeshStandardMaterial({ map: key === 'playground' ? wallpaperTex() : plasterTex(sp.wall, { repeat: [3, 2], amt: key === 'temple' ? 0.07 : 0.04 }), roughness: 0.92 });
   const wt = 0.3;
-  const back = box(X1 - X0 + wt * 2, h, wt, wallMat); back.position.set((X0 + X1) / 2, h / 2, Z0 - wt / 2); back.receiveShadow = true; scene.add(back);
-  const left = box(wt, h, d, wallMat); left.position.set(X0 - wt / 2, h / 2, 0); left.receiveShadow = true; scene.add(left);
-  const right = box(wt, h, d, wallMat); right.position.set(X1 + wt / 2, h / 2, 0); right.receiveShadow = true; scene.add(right);
+  const back = box(X1 - X0 + wt * 2, h, wt, wallMat); back.position.set((X0 + X1) / 2, h / 2, Z0 - wt / 2); back.receiveShadow = true; if (!outdoor) scene.add(back);
+  const left = box(wt, h, d, wallMat); left.position.set(X0 - wt / 2, h / 2, 0); left.receiveShadow = true; if (!outdoor) scene.add(left);
+  const right = box(wt, h, d, wallMat); right.position.set(X1 + wt / 2, h / 2, 0); right.receiveShadow = true; if (!outdoor) scene.add(right);
   // 징두리(벽 아랫단 목재/석재)
   const wains = M(key === 'temple' ? '#5a3524' : key === 'church' || key === 'cafe' ? '#7a5a40' : key === 'restaurant' ? '#5b3f2a' : key === 'cathedral' ? '#9f998d' : '#e6d2b0');
-  if (!STORES[key]) for (const [x, z, ww, dd] of [[(X0 + X1) / 2, Z0 + 0.02, X1 - X0, 0.06], [X0 + 0.02, 0, 0.06, d], [X1 - 0.02, 0, 0.06, d]]) { const b = box(ww, 1.0, dd, wains); b.position.set(x, 0.5, z); b.receiveShadow = true; scene.add(b); }
+  if (!STORES[key] && !outdoor && key !== 'arcade') for (const [x, z, ww, dd] of [[(X0 + X1) / 2, Z0 + 0.02, X1 - X0, 0.06], [X0 + 0.02, 0, 0.06, d], [X1 - 0.02, 0, 0.06, d]]) { const b = box(ww, 1.0, dd, wains); b.position.set(x, 0.5, z); b.receiveShadow = true; scene.add(b); }
   // 천장 (앞쪽 2/3 은 카메라 시야 확보를 위해 열어 둠)
-  const ceil = box(X1 - X0 + wt * 2, 0.25, d * 0.45, M(sp.ceil)); ceil.position.set((X0 + X1) / 2, h + 0.12, Z0 + d * 0.225); scene.add(ceil);
-  const plinth = box(X1 - X0 + wt * 2, 0.6, d + wt, M('#1b1512')); plinth.position.set((X0 + X1) / 2, -0.6, -wt / 2); scene.add(plinth);
+  const ceil = box(X1 - X0 + wt * 2, 0.25, d * 0.45, M(sp.ceil)); ceil.position.set((X0 + X1) / 2, h + 0.12, Z0 + d * 0.225); if (!outdoor) scene.add(ceil);
+  const plinth = box(X1 - X0 + wt * 2, 0.6, d + wt, M('#1b1512')); plinth.position.set((X0 + X1) / 2, -0.6, -wt / 2); if (!outdoor) scene.add(plinth);
 
   const obstacles = []; const obs = (cx, cz, sx, sz) => obstacles.push([cx - sx / 2, cz - sz / 2, cx + sx / 2, cz + sz / 2]);
   const seats = []; const machines = []; const clickables = []; const anim = []; const props = {};
@@ -130,6 +132,8 @@ export function buildInterior(key, { low, reduced }) {
   }
   if (key === 'playground') buildPlaygroundInterior(scene, obs, seats, machines, clickables, anim, reduced);
   if (STORES[key]) props.tables = buildStoreInterior(scene, key, obs, seats, clickables, anim, w, d, h, props);
+  if (key === 'foodstreet') buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, props, addScreen, low });
+  if (key === 'arcade') buildArcade(scene, { w, d, h, obs, seats, machines, clickables, anim, props, buildMachine });
   // 영상 스크린
   const SCR = { church: { x: 4.8, y: 3.7, z: -d / 2 + 0.08, w: 2.4, h: 1.35 }, cathedral: { x: 4.6, y: 3.6, z: -d / 2 + 0.08, w: 2.4, h: 1.35 }, cafe: { x: -w / 2 + 0.08, y: 2.45, z: -4.0, ry: Math.PI / 2, w: 2.2, h: 1.24 }, restaurant: { x: -w / 2 + 0.08, y: 2.45, z: 3.2, ry: Math.PI / 2, w: 2.4, h: 1.35 } }[key];
   if (SCR) props.screen = addScreen(scene, key, SCR, clickables, anim);
@@ -145,6 +149,7 @@ export function buildInterior(key, { low, reduced }) {
   for (const s of seats) nav.unblockAt(s.approach[0], s.approach[1], 0.2);
   for (const m of machines) if (m.userData.approach) nav.unblockAt(m.userData.approach[0], m.userData.approach[1], 0.2);
   if (props.shop) nav.unblockAt(props.shop.userData.approach[0], props.shop.userData.approach[1], 0.2);
+  for (const o of [props.photo, ...(props.booths || [])]) if (o && o.userData.approach) nav.unblockAt(o.userData.approach[0], o.userData.approach[1], 0.2);
   if (props.lectern) nav.unblockAt(props.lectern.userData.approach[0], props.lectern.userData.approach[1], 0.2);
   if (candles) nav.unblockAt(candles.access[0], candles.access[1], 0.2);
 
@@ -842,6 +847,7 @@ const SCREEN_SLIDES = {
   cathedral: [['매일 미사', '평일 오전 6시 · 저녁 7시 30분'], ['주님의 평화가 함께', '봉헌초를 켜고 함께 기도해요'], ['▶ 미사 영상', '화면을 누르면 미사 영상을 볼 수 있어요']],
   cafe: [['오늘의 추천', '바닐라라떼 5,500원 · 바스크 치즈케이크 6,500원'], ['자리 예약 · 미리 주문', '원하는 자리를 골라 예약하세요'], ['▶ 매장 영상', '화면을 누르면 영상을 볼 수 있어요']],
   restaurant: [['오늘의 정식', '한우 불고기 정식 16,000원'], ['룸 · 원탁 예약 가능', '단체 모임도 미리 주문까지'], ['▶ 매장 영상', '화면을 누르면 영상을 볼 수 있어요']],
+  stage: [['골목어게인', '매주 금·토 버스킹 · DJ 음악다방 · 거리노래방'], ['용마미식거리', '매주 금·토 17:00~22:00 차 없는 거리'], ['▶ 공연 영상', '화면을 누르면 영상을 볼 수 있어요']],
 };
 export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, clickables, anim) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; scene.add(g);
@@ -852,7 +858,7 @@ export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, c
   const slides = SCREEN_SLIDES[kind]; let i = -1;
   const draw = () => {
     i = (i + 1) % slides.length; const [t1, t2] = slides[i]; const W = c.width, H = c.height;
-    const gr = ctx.createLinearGradient(0, 0, W, H); const pal = { church: ['#3b2a1e', '#7a5a3a'], cathedral: ['#1f2a44', '#4b3a6b'], cafe: ['#3a2a1e', '#8a5f3f'], restaurant: ['#3a1e1a', '#7a3a2a'] }[kind];
+    const gr = ctx.createLinearGradient(0, 0, W, H); const pal = { church: ['#3b2a1e', '#7a5a3a'], cathedral: ['#1f2a44', '#4b3a6b'], cafe: ['#3a2a1e', '#8a5f3f'], restaurant: ['#3a1e1a', '#7a3a2a'], stage: ['#0E1F4D', '#7a2e0e'] }[kind] || ['#222', '#555'];
     gr.addColorStop(0, pal[0]); gr.addColorStop(1, pal[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = 'rgba(255,230,180,.08)'; for (let k = 0; k < 8; k++) { ctx.beginPath(); ctx.arc(W * (0.1 + k * 0.12), H * 0.85, 40 + k * 6, 0, Math.PI * 2); ctx.fill(); }
     ctx.textAlign = 'center'; ctx.fillStyle = '#F7EBD3'; ctx.font = `700 ${Math.round(H * 0.16)}px "Noto Sans KR", sans-serif`; ctx.fillText(t1, W / 2, H * 0.42);

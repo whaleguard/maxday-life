@@ -238,5 +238,82 @@ export const VIDEOS = {
   cathedral: 'J6IkJIGFFu0',  // cpbcTV 매일미사
   cafe: 'MYPVQccHhAQ',       // Relaxing Jazz Piano · 카페 재즈
   restaurant: 'yGzw1n5GudU', // 햄지 · 한식 백반
+  stage: 'hn7LUXKaQ3o',      // 용마미식거리 현장 (JY Enter)
   drivein: '',               // 맥스데이 라이프카드 영상 링크를 넣으면 지도 스크린에서 바로 재생 (비어 있으면 자체 홍보 영상)
+};
+
+// v3 — 거래처 확장 공간 (window.MDL_BRAND.extra 로 켬): 야시장 먹거리 골목 + 게임장
+// 용마미식거리 실제 매대 명단(2026yongma.com 「매대운영자명단 최종본」·「부스 배치도(최종)」, 개인정보 제외)
+export const STREET = {
+  name: _B.streetName || '용마미식거리', place: _B.streetPlace || '강릉 포남동 용마거리',
+  hours: '매주 금·토 17:00~22:00', season: '2026. 10. 9. ~ 11. 14.',
+  map: 'https://map.naver.com/p/search/%EA%B0%95%EB%A6%89%20%ED%8F%AC%EB%82%A81%EB%8F%99%EC%A3%BC%EB%AF%BC%EC%84%BC%ED%84%B0',
+  site: _B.streetSite || 'https://2026yongma.com/',
+  food: [
+    [1, '다원잔기지떡', '잔기지떡 · 커피약과 · 커피건빵 · 식혜', '8,000원대', '포남동'],
+    [2, '정동청과', '과일', '10,000원', '포남동'],
+    [3, '하루곱창', '찐만두 · 튀김만두 · 곱창구이', '10,000 / 10,000 / 15,000원', '포남동'],
+    [4, '만양맛값', '자연산 골뱅이숙회', '10,000원', '포남동'],
+    [5, '두루두루삼겹', '냉삼 · 제육볶음', '10,000 / 8,000원', '포남동'],
+    [6, '신촌장칼국수', '찐만두', '10,000원', '포남동'],
+    [7, '인생포차', '오뎅 · 제육볶음', '2,000원~', '포남동'],
+    [8, '정희이모', '커피 · 생맥주 · 기타', '3,000~5,000원', '포남동'],
+    [9, '강릉사랑로컬푸드', '두부', '10,000원', '포남동'],
+    [10, '유명참숯화로구이', '소불고기 핫도그 · 롱소시지 핫도그', '5,000원', '포남동'],
+    [11, '보경카페', '한방차', '8,000원대', '포남동'],
+    [12, '갤러리소풍', '새우부추전', '10,000원', '포남동'],
+    [13, '다래 1 (스트릿 철판명가)', '팟타이 · 문어꼬치', '8,000 / 5,000원', '강릉시'],
+    [14, '다래 2 (희양양 양꼬치)', '양꼬치 · 막창꼬치 · 고급양갈비', '6,000~10,000 / 5,000 / 8,000원', '강릉시'],
+    [15, '포항물회', '육회컵물회 · 고추잡채', '9,000 / 6,000원', '강릉시'],
+    [16, '강릉크로와상붕어빵', '월화달빵', '3,000원', '강릉시'],
+  ],
+  market: [
+    [17, '시마', '잡화', '5,000~100,000원', '포남동'],
+    [18, '메이드노리터', '수공예 실버 액세서리 · 은반지 만들기 체험', '10,000원~', '강릉시'],
+    [19, '와글와글', '3D 출력물 클리커·키캡 · 수제 말랑이', '2,000원~', '강릉시'],
+    [20, '실버moon', '실버·써지컬 주얼리', '5,000원~', '강릉시'],
+  ],
+  shops: ['강릉한우마크나인', '포남보양탕', '만양맛값', '두루두루삼겹', '하루곱창', '인생포차', '신촌장칼국수', '갤러리소풍', '보경카페', '포남1동 행정복지센터'],
+  local: [['초당두부', '바닷물로 간을 맞추는 강릉 대표 향토음식'], ['감자옹심이', '강원도 감자를 갈아 빚은 옹심이'], ['강릉짬뽕', '동해 해산물을 넣는 강릉식 짬뽕'], ['강릉커피', '커피의 도시 강릉의 한 잔']],
+};
+export const EXTRA = (_B.extra || []);
+if (EXTRA.includes('foodstreet')) {
+  SPACES.foodstreet = {
+    key: 'foodstreet', name: STREET.name, desc: '야시장 먹거리 골목', btn: '골목 가기', short: '골목', outdoor: true,
+    room: { w: 34, d: 34, h: 8 }, floor: '#3d3f45', wall: '#2a2c33', ceil: '#0E1F4D',
+    sun: ['#9fb0e8', 0.5], amb: ['#6f7fb8', 0.55], spawn: [0, 0, 15],
+    actions: [], outfit: 'casual', music: 'street',
+  };
+  SPACE_ORDER.push('foodstreet');
+  BUTTON_STYLE.foodstreet = { bg: '#FFE1C2', fg: '#7A2E0E', bd: '#E7883A', hv: '#FFD0A3' };
+}
+if (EXTRA.includes('arcade')) {
+  SPACES.arcade = {
+    key: 'arcade', name: S + ' 게임장', desc: '게임·뽑기·포토부스', btn: '게임장 가기', short: '게임장',
+    room: { w: 20, d: 16, h: 4.6 }, floor: '#2b2340', wall: '#2f2a45', ceil: '#1d1830',
+    sun: ['#c8b8ff', 0.9], amb: ['#9a8fd0', 0.75], spawn: [0, 0, 7],
+    actions: [], outfit: 'casual', music: 'arcade',
+  };
+  SPACE_ORDER.push('arcade');
+  BUTTON_STYLE.arcade = { bg: '#E6DEFF', fg: '#3B2A7A', bd: '#9C88E0', hv: '#D7CBFF' };
+}
+// 게임장 기계 (mapinlife 프로그램 연결 + 뽑기 + 포토부스)
+export const ARCADE = {
+  machines: [
+    { prog: 'seven', x: -8.2, z: -6.2, face: 0, color: '#FF7A59' },
+    { prog: 'arcade', x: -6.2, z: -6.2, face: 0, color: '#4FC3F7' },
+    { prog: 'iq', x: -4.2, z: -6.2, face: 0, color: '#B388FF' },
+    { prog: 'funtest', x: -2.2, z: -6.2, face: 0, color: '#FFD54F' },
+    { prog: 'tarot', x: 0.8, z: -6.2, face: 0, color: '#9496D4' },
+    { prog: 'unse', x: 2.8, z: -6.2, face: 0, color: '#CE93D8' },
+    { prog: 'lucky', x: 4.8, z: -6.2, face: 0, color: '#FFB74D' },
+    { prog: 'gwansang', x: 6.8, z: -6.2, face: 0, color: '#80CBC4' },
+    { prog: 'engword', x: -9.0, z: -2.2, face: 1, color: '#81D4FA', type: 'kids' },
+    { prog: 'spelling', x: -9.0, z: -0.2, face: 1, color: '#A5D6A7', type: 'kids' },
+    { prog: 'fairytale', x: -9.0, z: 1.8, face: 1, color: '#FFCC80', type: 'kids' },
+    { prog: 'gacha', id: 'clawA', x: 9.0, z: -3.0, face: -1, color: '#FF6E9A', type: 'gacha' },
+    { prog: 'gacha', id: 'clawB', x: 9.0, z: -0.8, face: -1, color: '#5ED3C4', type: 'gacha' },
+    { prog: 'gacha', id: 'clawC', x: 9.0, z: 1.4, face: -1, color: '#FFC94D', type: 'gacha' },
+  ],
+  photo: { x: 7.4, z: 5.4, url: 'https://mirrorphoto.kr/' },
 };
