@@ -20,13 +20,13 @@ export class Account {
   async signup(id, pw, info = {}) {
     if (typeof info === 'string') info = { owner: info };
     id = String(id || '').trim().toLowerCase();
-    const store = String(info.store || '').trim().slice(0, 30), owner = String(info.owner || '').trim().slice(0, 12);
+    const store = String(info.store || '').trim().slice(0, 30), owner = String(info.owner || '').trim().slice(0, 12), storeNo = String(info.storeNo || '').slice(0, 30);
     if (!this.validId(id)) return { ok: false, msg: '아이디는 영문 소문자·숫자 4~16자로 정해 주세요.' };
     if (String(pw || '').length < 8) return { ok: false, msg: '비밀번호는 8자 이상으로 정해 주세요.' };
     if (info.need && (!store || !owner)) return { ok: false, msg: '점포명과 대표자명을 모두 적어 주세요.' };
     const name = owner || id;
     if (this.server) {
-      const r = await this.net.acct('signup', { id, pw, name, store, owner });
+      const r = await this.net.acct('signup', { id, pw, name, store, owner, storeNo });
       if (!r.ok) return { ok: false, msg: r.reason === 'taken' ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.' };
       return this._start({ id, name: r.name, store, token: r.token });
     }
@@ -36,7 +36,7 @@ export class Account {
     const hash = await pbkdf2(pw, salt);
     const pk = hex(crypto.getRandomValues(new Uint8Array(16))); // 진도 보관 키 — 비밀번호·아이디를 바꿔도 그대로
     const at = Date.now();
-    await this.net.kvPut(key, { id, name, store, owner, salt, hash, pk, at, last: at });
+    await this.net.kvPut(key, { id, name, store, storeNo, owner, salt, hash, pk, at, last: at });
     return this._start({ id, name, store, pkey: pk });
   }
   async login(id, pw) {

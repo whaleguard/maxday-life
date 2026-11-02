@@ -37,7 +37,7 @@ export class AdminApi {
       return { users: r.users.map(u => ({ ...u, key: u.id, prog: r.prog[u.id] || {} })), roster: r.roster };
     }
     const [accts, progs, roster] = await Promise.all([this.net.kvList('acct/'), this.net.kvList('prog/'), this.net.kvGet('roster')]);
-    const users = Object.entries(accts).map(([key, rec]) => ({ key, rec, id: rec.id || '', name: rec.name || '', store: rec.store || '', owner: rec.owner || rec.name || '', at: rec.at || 0, last: rec.last || rec.at || 0, off: !!rec.off, legacy: !rec.id || !rec.pk, prog: (rec.pk && progs[rec.pk]) || {} }));
+    const users = Object.entries(accts).map(([key, rec]) => ({ key, rec, id: rec.id || '', name: rec.name || '', store: rec.store || '', storeNo: rec.storeNo || '', owner: rec.owner || rec.name || '', at: rec.at || 0, last: rec.last || rec.at || 0, off: !!rec.off, legacy: !rec.id || !rec.pk, prog: (rec.pk && progs[rec.pk]) || {} }));
     return { users, roster: Array.isArray(roster?.list) ? roster.list : null };
   }
   async setPassword(u, pw) {
