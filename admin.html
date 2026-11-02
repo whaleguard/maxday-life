@@ -8,16 +8,12 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=3">
+<link rel="stylesheet" href="css/admin.css?v=5">
 </head>
 <body>
-<header class="ad-top">
-  <div class="ad-brand"><img id="ad-logo" alt=""><div><b id="ad-name">강의실</b><small>관리자</small></div></div>
-  <div class="ad-top-r"><span class="ad-mode" id="ad-mode"></span><button class="ad-btn ghost" id="ad-reload" hidden>새로고침</button><button class="ad-btn ghost" id="ad-logout" hidden>로그아웃</button></div>
-</header>
-
 <main id="ad-login" class="ad-login">
   <form class="ad-card" id="ad-login-form" autocomplete="off">
+    <img class="ad-card-logo" id="ad-login-logo" alt="">
     <h1>관리자 로그인</h1>
     <p class="muted">회원·진도 확인, 아이디·비밀번호 재설정, 미가입 점포 확인</p>
     <input type="password" id="ad-pw" placeholder="관리자 비밀번호" autocomplete="current-password" aria-label="관리자 비밀번호">
@@ -27,35 +23,66 @@
   </form>
 </main>
 
-<main id="ad-app" hidden>
-  <p class="ad-demo" id="ad-demo" hidden></p>
-  <section class="ad-kpis" id="ad-kpis"></section>
-  <nav class="ad-tabs" role="tablist">
-    <button class="on" data-t="members">회원</button>
-    <button data-t="missing">미가입 점포</button>
-    <button data-t="lectures">강의별 현황</button>
-    <button data-t="roster">점포 명단</button>
-    <button data-t="settings">설정·내보내기</button>
-  </nav>
-  <section class="ad-pane" id="pane-members">
-    <div class="ad-tools"><input id="ad-q" placeholder="점포명·대표자·아이디 검색" aria-label="검색">
-      <select id="ad-f" aria-label="걸러 보기"><option value="">전체</option><option value="ing">수강 중</option><option value="done">수료 있음</option><option value="none">수강신청 없음</option><option value="idle">14일 넘게 미접속</option><option value="off">이용 중지</option></select>
-      <span class="muted small" id="ad-count"></span></div>
-    <div class="ad-table-wrap"><table class="ad-table" id="ad-members"></table></div>
-  </section>
-  <section class="ad-pane" id="pane-missing" hidden></section>
-  <section class="ad-pane" id="pane-lectures" hidden></section>
-  <section class="ad-pane" id="pane-roster" hidden></section>
-  <section class="ad-pane" id="pane-settings" hidden></section>
-</main>
+<div id="ad-app" class="ad-shell" hidden>
+  <aside class="ad-side" aria-label="관리 메뉴">
+    <div class="sd-logo"><img id="ad-logo" alt=""><b id="ad-name">강의실</b></div>
+    <nav class="sd-nav">
+      <button data-t="dash" class="on"><i class="ic ic-dash"></i><span>대시보드</span></button>
+      <button data-t="members"><i class="ic ic-user"></i><span>회원</span></button>
+      <button data-t="missing"><i class="ic ic-store"></i><span>미가입 점포</span><em id="nav-miss"></em></button>
+      <button data-t="lectures"><i class="ic ic-book"></i><span>강의 현황</span></button>
+      <button data-t="roster"><i class="ic ic-list"></i><span>점포 명단</span></button>
+      <button data-t="settings"><i class="ic ic-gear"></i><span>설정</span></button>
+    </nav>
+    <div class="sd-foot"><span class="sd-av">관</span><div><b>관리자</b><small id="ad-mode"></small></div><button class="sd-out" id="ad-logout" title="로그아웃" aria-label="로그아웃">⏻</button></div>
+  </aside>
 
-<div class="ad-drawer" id="ad-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="dr-title">
-  <div class="ad-drawer-in">
-    <div class="dr-head"><h2 id="dr-title">회원</h2><button class="x" id="dr-x" aria-label="닫기">✕</button></div>
-    <div id="dr-body"></div>
+  <div class="ad-main">
+    <header class="ad-head">
+      <div><h1 id="pg-title">교육 운영 대시보드</h1><p id="pg-sub">점주님 학습 현황을 한눈에 확인하세요</p></div>
+      <div class="hd-tools">
+        <select id="ad-range" aria-label="기간"><option value="4">최근 4주</option><option value="8">최근 8주</option><option value="12">최근 12주</option></select>
+        <button class="ad-btn ghost sm" id="ad-csv">CSV 내보내기</button>
+        <button class="ad-btn sm" id="ad-reload">새로고침</button>
+      </div>
+    </header>
+    <p class="ad-demo" id="ad-demo" hidden></p>
+
+    <div class="kpis" id="kpis"></div>
+    <div class="ad-body">
+      <div class="ad-content">
+        <section class="pane" id="pane-dash">
+          <div class="g2">
+            <article class="card"><header><h2>분류별 학습 현황</h2><span class="lg"><i class="sw pl"></i>평균 진도율<i class="sw ap"></i>수료율</span></header><div id="ch-cat"></div></article>
+            <article class="card"><header><h2 id="tr-title">최근 4주 접속·수강 추이</h2><span class="lg"><i class="sw pl"></i>접속 회원<i class="sw ap"></i>수강 시작</span></header><div id="ch-trend"></div></article>
+          </div>
+          <article class="card"><header><h2>강의별 수강·수료</h2><span class="seg" id="lec-seg"><button class="on" data-v="top">상위 10강</button><button data-v="all">전체 30강</button></span><span class="lg"><i class="sw pl"></i>수강 신청<i class="sw ap"></i>수료</span></header><div class="hscroll" id="ch-lec"></div></article>
+          <article class="card"><header><h2>점포별 강의 진도</h2><span class="lg heat-lg">미신청<i class="hl h0"></i>시작<i class="hl h1"></i><i class="hl h2"></i><i class="hl h3"></i><i class="hl h4"></i>수료<i class="hl h5"></i></span></header><div class="hscroll" id="ch-heat"></div></article>
+          <div class="g2">
+            <article class="card"><header><h2 id="miss-title">미가입 점포</h2><button class="ad-btn ghost sm" id="miss-copy-all">안내 문구 복사</button></header><div id="dash-miss"></div></article>
+            <article class="card"><header><h2>최근 활동</h2><button class="lnk" data-go="members">회원 보기 ›</button></header><ul class="feed" id="feed"></ul></article>
+          </div>
+          <article class="card"><header><h2>회원 관리</h2><div class="tb-tools"><input class="q" placeholder="점포명·대표자·아이디 검색" aria-label="검색" data-q><select data-f aria-label="걸러 보기"><option value="">전체 상태</option><option value="ing">수강 중</option><option value="done">수료 있음</option><option value="none">수강신청 없음</option><option value="idle">14일 넘게 미접속</option><option value="off">이용 중지</option></select></div></header><div class="tbl-wrap" data-members></div></article>
+        </section>
+
+        <section class="pane" id="pane-members" hidden>
+          <article class="card"><header><h2>회원 <small id="mem-count"></small></h2><div class="tb-tools"><input class="q" placeholder="점포명·대표자·아이디 검색" aria-label="검색" data-q><select data-f aria-label="걸러 보기"><option value="">전체 상태</option><option value="ing">수강 중</option><option value="done">수료 있음</option><option value="none">수강신청 없음</option><option value="idle">14일 넘게 미접속</option><option value="off">이용 중지</option></select></div></header><div class="tbl-wrap" data-members></div></article>
+        </section>
+        <section class="pane" id="pane-missing" hidden></section>
+        <section class="pane" id="pane-lectures" hidden></section>
+        <section class="pane" id="pane-roster" hidden></section>
+        <section class="pane" id="pane-settings" hidden></section>
+      </div>
+
+      <aside class="detail" id="detail" aria-label="회원 상세">
+        <div class="dt-in"><div class="dt-head"><h2>회원 상세</h2><button class="x" id="dt-x" aria-label="닫기">✕</button></div><div id="dt-body"><p class="muted small">회원을 선택하면 계정 관리와 강의별 진도가 여기에 표시돼요.</p></div></div>
+      </aside>
+    </div>
+    <footer class="ad-foot" id="ad-foot"></footer>
   </div>
 </div>
+<div class="dt-dim" id="dt-dim" hidden></div>
 <div class="ad-toast" id="ad-toast" role="status" hidden></div>
-<script type="module" src="js/admin-app.js?v=2"></script>
+<script type="module" src="js/admin-app.js?v=4"></script>
 </body>
 </html>
