@@ -327,3 +327,70 @@ body.reduce .nametag.pin.feat{animation:none}
 .enter-btn[data-space=foodstreet]{box-shadow:0 0 0 2px #F07A1A inset}
 #room-logo{height:30px;width:auto;margin-right:8px;vertical-align:middle;background:#fff;border-radius:6px;padding:2px 6px}
 @media (max-width:639px){#room-logo{height:22px;padding:1px 4px}}
+
+/* v4 — 강의실 */
+.lectures-sheet{width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto}
+.lectures-sheet h3{margin:14px 0 8px;font-size:15px}
+.lc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:10px}
+.lc-item{display:flex;flex-direction:column;text-align:left;border:1px solid #e0d8c8;border-radius:12px;background:#fff;overflow:hidden;cursor:pointer;padding:0;font:inherit;color:inherit}
+.lc-item:hover{border-color:#7FB0A0;box-shadow:0 4px 14px rgba(31,74,63,.15)}
+.lc-item img{width:100%;aspect-ratio:16/9;object-fit:cover;background:#dfe7e3;display:block}
+.lc-item span{padding:10px 12px}.lc-item b{display:block;font-size:14px;line-height:1.35}.lc-item small{display:block;font-size:12px;color:#6b7a75;margin-top:3px}
+.lc-now{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#e6f1ed;border:1px solid #9cc5b7;border-radius:12px;padding:10px 12px;margin:6px 0 4px;font-size:14px}
+.lec-banner{position:fixed;left:50%;top:calc(76px + var(--sat,0px));transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;background:#1F4A3F;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:calc(100vw - 24px);font-size:14px}
+.lec-banner .x{color:#fff;background:transparent;border:0;font-size:16px;cursor:pointer}
+@media (max-width:639px){.lec-banner{flex-wrap:wrap;justify-content:center;text-align:center}}
+
+.lc-tabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 10px}
+.lc-tab{border:1px solid #cfd6e3;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--lc,#0E1F4D)}
+.lc-tab.on{background:var(--lc,#0E1F4D);color:#fff;border-color:var(--lc,#0E1F4D)}
+.lc-done{margin-left:auto;font-size:12px;color:#6b7a75}
+.lc-item em,.lc-head em{font-style:normal;font-size:11px;font-weight:700;color:var(--lc2,#E8843C);display:block;margin-bottom:2px}
+.lc-item .lc-who{color:#4a5677;margin-top:4px}
+.lc-thumb{position:relative;display:block;padding:0!important}
+.lc-badge{position:absolute;right:8px;bottom:8px;background:#1F4A3F;color:#fff;font-style:normal;font-size:11px;padding:3px 8px;border-radius:999px}
+.lc-badge.go{background:var(--lc2,#E8843C)}
+.lc-head .lc-badge,.bt-btns .lc-badge{position:static;align-self:center}
+.lc-back{border:0;background:none;color:var(--lc,#0E1F4D);font:inherit;font-size:14px;cursor:pointer;padding:4px 0;margin-bottom:6px}
+.lc-head{display:grid;grid-template-columns:minmax(0,240px) 1fr;gap:14px;align-items:start}
+.lc-head img{width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover}
+.lc-head h3{margin:0 0 4px;font-size:18px}
+.lc-sec{margin-top:16px;border-top:1px solid #e6dccb;padding-top:12px}
+.lc-sec h4{margin:0 0 8px;font-size:15px}
+.lc-check{list-style:none;padding:0;margin:0 0 8px}.lc-check li{padding:6px 0;font-size:14px}.lc-check input{margin-right:6px;transform:scale(1.15)}
+.lc-sec textarea{width:100%;min-height:70px;border:1px solid #d8cdb8;border-radius:10px;padding:10px;font:inherit;box-sizing:border-box}
+.lc-qa{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;margin-bottom:8px}
+.lc-qi{background:#f6f3ec;border-radius:10px;padding:8px 10px;font-size:14px}.lc-qi p{margin:4px 0 0}
+.lc-at{margin-left:8px;font-size:11px;background:var(--lc2,#E8843C);color:#fff;border-radius:999px;padding:1px 6px}
+.lc-ask{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.lc-ask input[type=text],.lc-ask #lc-q{flex:1;min-width:180px;height:40px;border:1px solid #d8cdb8;border-radius:10px;padding:0 12px;font:inherit}
+@media (max-width:639px){.lc-head{grid-template-columns:1fr}.lectures-sheet{width:100vw;max-height:100dvh;border-radius:0}}
+
+/* v5 — 계정 · 수강 · 수료 */
+.login-sheet{width:min(420px,calc(100vw - 32px))}
+.lg-form{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.lg-form input{height:44px;border:1px solid #d8cdb8;border-radius:10px;padding:0 12px;font:inherit}
+.lg-form .err{color:#b3261e;min-height:1.2em;margin:0}
+.acct-pill.on{background:#1F4A3F;color:#fff}
+.vd-prog{margin-left:10px;font-size:12px;font-weight:600;background:var(--lc2,#E8843C);color:#fff;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.vd-prog.done{background:#1F4A3F}
+.video-sheet .prog-bar{display:flex;align-items:center;gap:6px}
+#vd-player{position:absolute;inset:0;width:100%;height:100%}
+.lc-bar{height:6px;background:#e6e0d4;border-radius:999px;overflow:hidden;margin-top:6px}.lc-bar i{display:block;height:100%;background:var(--lc2,#E8843C)}
+.lc-bar.done i{background:#1F4A3F}
+.lc-status{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:4px;background:#eef1f7;color:var(--lc,#0E1F4D)}
+.lc-status.ing{background:#fff1e6;color:#b85a14}.lc-status.done{background:#e3f1ec;color:#1F4A3F}
+.cert-sheet{width:min(720px,calc(100vw - 32px))}
+.cert-sheet img{width:100%;border-radius:10px;border:1px solid #e6dccb;display:block}
+@media (max-width:639px){ .acct-pill .lbl{display:none} }
+
+html.theme-academy{--lc:#49334F;--lc2:#d9895a}
+html.theme-academy .lec-banner{background:#49334F}
+html.theme-academy .acct-pill.on{background:#49334F}
+html.theme-academy .vd-prog{background:#d9895a}html.theme-academy .vd-prog.done{background:#49334F}
+.lc-cont{display:flex;gap:12px;align-items:center;justify-content:space-between;border:2px solid var(--lc2,#E8843C);border-radius:14px;padding:12px 14px;margin:2px 0 12px;background:#fff}
+.lc-cont em{font-style:normal;font-size:12px;font-weight:800;color:var(--lc,#0E1F4D);display:block}.lc-cont b{display:block;font-size:15px}.lc-cont small{color:#6b6470;font-size:12px}
+a.pill{text-decoration:none}
+.enter-grid.n1{grid-template-columns:1fr!important;width:min(340px,calc(100vw - 32px))!important}
+.enter-grid.n1 .enter-btn .n{white-space:nowrap}
+.enter-grid.n1 .enter-btn{height:72px}.enter-grid.n1 .enter-btn .n{font-size:18px}
+@media (max-width:1439px){#sister-pill .lbl{display:none}#sister-pill{padding:0;width:48px;justify-content:center}}
