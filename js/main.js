@@ -706,7 +706,7 @@ async function openLectureVideo(id, start) {
 function showCert(id) {
   const l = lecById(id); const r = account.prog[id]; if (!l || !r || !r.done || !account.user) return;
   if (SPACE_ORDER.join() === 'lecture') { // 점주 아카데미: GPT 수료증 디자인(플럼 이중 테두리·살구 포인트) 위에 이름·강의명·수료일을 채움
-    const bg = new Image(); bg.onload = () => {
+    const bg = new Image(); bg.crossOrigin = 'anonymous'; bg.onload = () => {
       const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height; const g = c.getContext('2d'); g.drawImage(bg, 0, 0); const k = c.width / 880;
       g.fillStyle = '#F7F3EC'; g.fillRect(170 * k, 413 * k, 550 * k, 72 * k);
       g.textAlign = 'center'; g.fillStyle = '#34343A'; g.font = `500 ${Math.round(19 * k)}px "Noto Sans KR", sans-serif`;
@@ -717,7 +717,7 @@ function showCert(id) {
       fit(l.t, 420, 21); g.fillText(l.t, 282 * k, 310 * k);
       fit('x', 420, 21); g.fillText(new Date(r.done).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + `  ·  실제 시청 ${account.pct(id)}%`, 282 * k, 372 * k);
       const fin = () => { const url = c.toDataURL('image/png'); $('#ct-img').src = url; $('#ct-dl').href = url; $('#ct-dl').download = `수료증_${account.user.name}_${l.t.replace(/[\\/:*?"<>|]/g, '')}.png`; openModal('cert'); };
-      const lg = new Image(); lg.onload = () => { const w = 180 * k, h = w * lg.height / lg.width; g.drawImage(lg, 40 * k, 34 * k, w, h); fin(); }; lg.onerror = fin; lg.src = BRAND.logo;
+      const lg = new Image(); lg.crossOrigin = 'anonymous'; lg.onload = () => { const w = 180 * k, h = w * lg.height / lg.width; g.drawImage(lg, 40 * k, 34 * k, w, h); fin(); }; lg.onerror = fin; lg.src = BRAND.logo;
     };
     bg.src = 'assets/tex/academy_cert.webp'; return;
   }
@@ -732,7 +732,7 @@ function showCert(id) {
   g.fillText(new Date(r.done).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }), 700, 800);
   g.fillStyle = '#0E1F4D'; g.font = '800 40px "Noto Sans KR", sans-serif'; g.fillText(BRAND.ko, 700, 870);
   const draw = () => { const url = c.toDataURL('image/png'); $('#ct-img').src = url; $('#ct-dl').href = url; $('#ct-dl').download = `수료증_${account.user.name}_${l.t.replace(/[\\/:*?"<>|]/g, '')}.png`; openModal('cert'); };
-  const im = new Image(); im.onload = () => { const w = 260, h = w * im.height / im.width; g.drawImage(im, 1400 - 120 - w, 110, w, h); draw(); }; im.onerror = draw; im.src = BRAND.logo;
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { const w = 260, h = w * im.height / im.width; g.drawImage(im, 1400 - 120 - w, 110, w, h); draw(); }; im.onerror = draw; im.src = BRAND.logo;
 }
 function playLecture(id, start, joined) {
   const l = lecById(id) || { t: '강의' };
