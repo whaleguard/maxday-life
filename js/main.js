@@ -599,6 +599,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 // 강의실: 강의 목록 · 재생 · 같은 방 함께 듣기 (내가 튼 강의는 상태로 공유 → 다른 사람에게 '함께 듣기' 안내)
 function lecById(id) { return LECTURES.find(l => l.id === id); }
 const ACAD = SPACE_ORDER.join() === 'lecture';
+function orgFooter() { const O = (window.MDL_BRAND || {}).org; if (!O || !O.name) return; document.querySelectorAll('.org-foot').forEach(e => e.remove()); const html = `<b>교육 주관</b> ${esc(O.name)} · 대표 ${esc(O.ceo || '')} · 사업자등록번호 ${esc(O.bizno || '')}<br>${esc(O.addr || '')}${O.email ? ' · ' + esc(O.email) : ''}`; ['#modal-lectures .sheet', '#modal-login .sheet'].forEach(sel => { const sh = document.querySelector(sel); if (sh) { const p = document.createElement('p'); p.className = 'org-foot'; p.innerHTML = html; sh.appendChild(p); } }); }
 function lecThumb(l) { return l.yt ? `<img src="https://i.ytimg.com/vi/${l.yt}/mqdefault.jpg" alt="" loading="lazy">` : `<span class="lc-ph"><b>${l.n || ''}<small>강</small></b><i>${esc(l.cat || '')}</i>${l.yt === '' ? '<em>영상 준비 중</em>' : ''}</span>`; }
 function lecSec(len) { return String(len || '0').split(':').reduce((a, b) => a * 60 + (+b || 0), 0); }
 const fmtT = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss2 = s % 60; return (h ? h + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss2).padStart(2, '0'); };
@@ -606,6 +607,7 @@ function lecState(id) { const r = account.prog[id]; if (!r || !r.enrolled) retur
 // 로그인 / 회원가입
 let loginNext = null, lgMode = 'login';
 function openLogin(next, why) {
+  orgFooter();
   loginNext = next || null; $('#lg-why').textContent = why || '수강신청·진도·수료가 계정에 저장됩니다.'; $('#lg-why').hidden = !!account.user && !why;
   $('#lg-note').textContent = account.server ? '비밀번호는 서버에 암호화(scrypt)해 보관합니다.' : '시연 버전: 비밀번호는 원문을 저장하지 않고 암호화(PBKDF2) 값만 보관합니다. 다른 사이트와 같은 비밀번호는 쓰지 마세요.';
   const me = account.user; $('#lg-form').hidden = !!me; $('#lg-me').hidden = !me; document.querySelector('#modal-login .rv-tabs').hidden = !!me;
@@ -632,6 +634,7 @@ function openLectures(cat, mine) {
   const cats = LECTURE_CATS.filter(c => LECTURES.some(l => l.cat === c)).concat([...new Set(LECTURES.map(l => l.cat))].filter(c => !LECTURE_CATS.includes(c)));
   const doneN = LECTURES.filter(l => account.prog[l.id]?.done).length, enN = LECTURES.filter(l => account.prog[l.id]?.enrolled).length;
   $('#lc-title').textContent = mine ? '내 강의' : '강의 목록';
+  orgFooter();
   if ($('#lc-src-note')) $('#lc-src-note').textContent = ACAD ? '강의 영상은 용마미식거리 유튜브 채널(일부 공개)에서 강의실 안으로 재생하고, 실제로 본 구간만 진도로 기록합니다. 영상이 올라오지 않은 강의는 \'영상 준비 중\'으로 보여요.' : '강의는 유튜브 플레이어로 재생합니다. 강의를 틀면 같은 방 사람들에게 \'함께 듣기\' 안내가 갑니다.';
   const cur = mine ? '내 강의' : (cat || '전체');
   $('#lc-tabs').innerHTML = ['내 강의', '전체', ...cats].map(c => `<button class="lc-tab${cur === c ? ' on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('') + `<span class="lc-done">${account.user ? `${esc(account.user.name)}님 · 신청 ${enN} · 수료 ${doneN}/${LECTURES.length}` : '로그인하면 진도가 저장돼요'}</span>`;
@@ -721,6 +724,7 @@ function showCert(id) {
       fit(account.user.name, 420, 26); g.fillText(account.user.name, 282 * k, 248 * k);
       fit(l.t, 420, 21); g.fillText(l.t, 282 * k, 310 * k);
       fit('x', 420, 21); g.fillText(new Date(r.done).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + `  ·  실제 시청 ${account.pct(id)}%`, 282 * k, 372 * k);
+      const O = (window.MDL_BRAND || {}).org; if (O && O.name) { g.textAlign = 'left'; g.fillStyle = '#6b5a70'; g.font = `500 ${Math.round(11 * k)}px "Noto Sans KR", sans-serif`; g.fillText('교육 주관', 66 * k, 552 * k); g.fillStyle = '#49334F'; g.font = `700 ${Math.round(14 * k)}px "Noto Sans KR", sans-serif`; g.fillText(O.name, 66 * k, 572 * k); }
       const fin = () => { const url = c.toDataURL('image/png'); $('#ct-img').src = url; $('#ct-dl').href = url; $('#ct-dl').download = `수료증_${account.user.name}_${l.t.replace(/[\\/:*?"<>|]/g, '')}.png`; openModal('cert'); };
       const lg = new Image(); lg.crossOrigin = 'anonymous'; lg.onload = () => { const w = 180 * k, h = w * lg.height / lg.width; g.drawImage(lg, 40 * k, 34 * k, w, h); fin(); }; lg.onerror = fin; lg.src = BRAND.logo;
     };

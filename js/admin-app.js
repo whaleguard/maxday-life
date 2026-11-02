@@ -199,3 +199,4 @@ function dl(name, rows) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `${BRAND.short}_${name}`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 window.__adm = { api, get D() { return D; }, reload };
+if (B.org && B.org.name) { const f = document.createElement('footer'); f.className = 'ad-foot'; f.innerHTML = `<b>교육 주관</b> ${esc(B.org.name)} · 대표 ${esc(B.org.ceo || '')} · 사업자등록번호 ${esc(B.org.bizno || '')} · ${esc(B.org.addr || '')}${B.org.email ? ' · ' + esc(B.org.email) : ''}`; document.body.appendChild(f); }
