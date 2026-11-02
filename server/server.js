@@ -1,10 +1,12 @@
 // 맥스데이 라이프 실시간 방 서버 (운영용, 서버 권한 판정)
 // 실행: cd server && npm install && node server.js   (기본 포트 8787, 환경변수 PORT)
 // 클라이언트 접속: https://<사이트>/?server=wss://<도메인>/ws
+// 관리자 페이지(admin/): 환경변수 ADMIN_PW=<관리자 비밀번호> 로 켬 (비워 두면 관리자 기능 꺼짐)
 // 데이터: 모든 상태는 메모리에만 보관(위치 변경을 DB에 쌓지 않음). 세션은 접속 종료 후 유예 15초 뒤 정리.
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import fs from 'fs';
+import crypto from 'crypto';
 
 const PORT = +process.env.PORT || 8787;
 const CAPACITY = +process.env.ROOM_CAPACITY || 20;
@@ -24,7 +26,8 @@ const ACCT_FILE = process.env.ACCT_FILE || './accounts.json';
 let accts = { users: {}, prog: {} }; try { accts = JSON.parse(fs.readFileSync(ACCT_FILE, 'utf8')); } catch (e) {}
 const saveAccts = () => { try { fs.writeFileSync(ACCT_FILE, JSON.stringify(accts)); } catch (e) { console.error(e); } };
 const tokens = new Map(); // token -> id (서버 메모리 세션)
-const crypto = require('crypto');
+const ADMIN_PW = process.env.ADMIN_PW || ''; // 비워 두면 관리자 기능 꺼짐
+const adminTokens = new Map();
 const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
 const saveResv = () => { try { fs.writeFileSync(RESV_FILE, JSON.stringify(resv)); } catch (e) { console.error(e); } };
 const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
@@ -128,17 +131,39 @@ wss.on('connection', ws => {
         if (resv[key] && resv[key][r.id]) { delete resv[key][r.id]; saveResv(); }
         return reply({ ok: true });
       }
-      case 'acct': { // 계정 · 수강신청 · 진도 (op: signup | login | me | progGet | progSave)
-        const id = String(m.id || '').toLowerCase();
+      case 'acct': { // 계정 · 수강신청 · 진도 (op: signup | login | me | progGet | progSave | admin*)
+        const id = String(m.uid || '').toLowerCase();
         if (m.op === 'signup') {
           if (!/^[a-z0-9_]{4,16}$/.test(id) || String(m.pw || '').length < 8) return reply({ ok: false, reason: 'bad' });
           if (accts.users[id]) return reply({ ok: false, reason: 'taken' });
-          const salt = crypto.randomBytes(16).toString('hex'); accts.users[id] = { name: String(m.name || id).slice(0, 12), salt, hash: hashPw(m.pw, salt), at: Date.now() }; saveAccts();
+          const salt = crypto.randomBytes(16).toString('hex'); const at0 = Date.now(); accts.users[id] = { name: String(m.owner || m.name || id).slice(0, 12), store: String(m.store || '').slice(0, 30), owner: String(m.owner || '').slice(0, 12), salt, hash: hashPw(m.pw, salt), at: at0, last: at0 }; saveAccts();
           const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: accts.users[id].name });
         }
         if (m.op === 'login') {
-          const u = accts.users[id]; if (!u || hashPw(m.pw, u.salt) !== u.hash) return reply({ ok: false, reason: 'wrong' });
-          const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: u.name });
+          const u = accts.users[id]; if (!u || u.off || hashPw(m.pw, u.salt) !== u.hash) return reply({ ok: false, reason: 'wrong' });
+          u.last = Date.now(); saveAccts();
+          const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: u.name, store: u.store || '' });
+        }
+        // ---- 관리자 (ADMIN_PW 환경변수로 켬): 회원·진도 조회, 비밀번호 재설정, 아이디 변경, 미가입 대조용 점포 명단 ----
+        if (String(m.op || '').startsWith('admin')) {
+          if (m.op === 'adminLogin') {
+            if (!ADMIN_PW) return reply({ ok: false, reason: 'off' });
+            const a = Buffer.from(String(m.pw || '')), b = Buffer.from(ADMIN_PW);
+            if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) { setTimeout(() => reply({ ok: false, reason: 'wrong' }), 800); return; }
+            const tk = crypto.randomBytes(24).toString('hex'); adminTokens.set(tk, Date.now() + 12 * 3600e3); return reply({ ok: true, token: tk });
+          }
+          const exp = adminTokens.get(String(m.token || '')); if (!exp || exp < Date.now()) return reply({ ok: false, reason: 'auth' });
+          const pub = (id, u) => ({ id, name: u.name, store: u.store || '', owner: u.owner || '', at: u.at, last: u.last || 0, off: !!u.off });
+          if (m.op === 'adminList') return reply({ ok: true, users: Object.entries(accts.users).map(([id, u]) => pub(id, u)), prog: accts.prog, roster: accts.roster || null });
+          const tid = String(m.uid || '').toLowerCase(); const u = accts.users[tid];
+          if (m.op === 'adminRoster') { if (!Array.isArray(m.roster)) return reply({ ok: false, reason: 'bad' }); accts.roster = m.roster.slice(0, 500).map(r => ({ store: String(r.store || '').slice(0, 30), owner: String(r.owner || '').slice(0, 12), no: String(r.no || '').slice(0, 10) })); saveAccts(); return reply({ ok: true }); }
+          if (!u) return reply({ ok: false, reason: 'nouser' });
+          const kick = id => { for (const [k, v] of tokens) if (v === id) tokens.delete(k); };
+          if (m.op === 'adminSetPw') { if (String(m.pw || '').length < 8) return reply({ ok: false, reason: 'bad' }); u.salt = crypto.randomBytes(16).toString('hex'); u.hash = hashPw(m.pw, u.salt); kick(tid); saveAccts(); return reply({ ok: true }); }
+          if (m.op === 'adminEdit') { if (m.store !== undefined) u.store = String(m.store).slice(0, 30); if (m.owner !== undefined) { u.owner = String(m.owner).slice(0, 12); u.name = u.owner || u.name; } if (m.off !== undefined) { u.off = !!m.off; if (u.off) kick(tid); } saveAccts(); return reply({ ok: true }); }
+          if (m.op === 'adminRename') { const to = String(m.to || '').toLowerCase(); if (!/^[a-z0-9_]{4,16}$/.test(to)) return reply({ ok: false, reason: 'bad' }); if (accts.users[to]) return reply({ ok: false, reason: 'taken' }); accts.users[to] = u; delete accts.users[tid]; if (accts.prog[tid]) { accts.prog[to] = accts.prog[tid]; delete accts.prog[tid]; } kick(tid); saveAccts(); return reply({ ok: true }); }
+          if (m.op === 'adminDelete') { delete accts.users[tid]; delete accts.prog[tid]; kick(tid); saveAccts(); return reply({ ok: true }); }
+          return reply({ ok: false, reason: 'op' });
         }
         const who = tokens.get(String(m.token || '')); if (!who) return reply({ ok: false, reason: 'auth' });
         if (m.op === 'me') return reply({ ok: true, id: who, name: accts.users[who]?.name });
