@@ -88,7 +88,7 @@ function wireAccount() {
   if (BRAND.sister && !document.getElementById('sister-pill')) { const s = document.createElement('a'); s.id = 'sister-pill'; s.className = 'pill'; s.href = BRAND.sister.url; s.target = '_blank'; s.rel = 'noopener'; s.innerHTML = `<span class="ico">↗</span><span class="lbl">${esc(BRAND.sister.label)}</span>`; s.title = BRAND.sister.label; s.setAttribute('aria-label', BRAND.sister.label); document.querySelector('.g-menu').insertBefore(s, $('#acct-pill')); }
   $('#acct-pill').onclick = () => openLogin(null);
   document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.onclick = () => setLgMode(t.dataset.lg));
-  $('#lg-go').onclick = submitLogin; ['lg-id', 'lg-pw', 'lg-pw2', 'lg-name'].forEach(k => $('#' + k).onkeydown = e => { if (e.key === 'Enter') submitLogin(); });
+  $('#lg-go').onclick = submitLogin; ['lg-id', 'lg-pw', 'lg-pw2', 'lg-name', 'lg-store'].filter(k => $('#' + k)).forEach(k => $('#' + k).onkeydown = e => { if (e.key === 'Enter') submitLogin(); });
   $('#lg-out').onclick = () => { account.logout(); syncAcctUI(); closeModal('login'); toast('로그아웃했어요.'); if (app.space === 'lecture') leaveToMap(); };
   $('#lg-mylec').onclick = () => { closeModal('login'); openLectures(null, true); };
   syncAcctUI(); if (account.user) account.load();
@@ -598,6 +598,8 @@ function openPhoto() {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // 강의실: 강의 목록 · 재생 · 같은 방 함께 듣기 (내가 튼 강의는 상태로 공유 → 다른 사람에게 '함께 듣기' 안내)
 function lecById(id) { return LECTURES.find(l => l.id === id); }
+const ACAD = SPACE_ORDER.join() === 'lecture';
+function lecThumb(l) { return l.yt ? `<img src="https://i.ytimg.com/vi/${l.yt}/mqdefault.jpg" alt="" loading="lazy">` : `<span class="lc-ph"><b>${l.n || ''}<small>강</small></b><i>${esc(l.cat || '')}</i>${l.yt === '' ? '<em>영상 준비 중</em>' : ''}</span>`; }
 function lecSec(len) { return String(len || '0').split(':').reduce((a, b) => a * 60 + (+b || 0), 0); }
 const fmtT = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss2 = s % 60; return (h ? h + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss2).padStart(2, '0'); };
 function lecState(id) { const r = account.prog[id]; if (!r || !r.enrolled) return { k: 'none', label: '수강신청 전' }; if (r.done) return { k: 'done', label: '수료' }; const p = account.pct(id); return { k: 'ing', label: p ? `수강 중 ${p}%` : '수강 신청됨', p }; }
@@ -608,15 +610,15 @@ function openLogin(next, why) {
   $('#lg-note').textContent = account.server ? '비밀번호는 서버에 암호화(scrypt)해 보관합니다.' : '시연 버전: 비밀번호는 원문을 저장하지 않고 암호화(PBKDF2) 값만 보관합니다. 다른 사이트와 같은 비밀번호는 쓰지 마세요.';
   const me = account.user; $('#lg-form').hidden = !!me; $('#lg-me').hidden = !me; document.querySelector('#modal-login .rv-tabs').hidden = !!me;
   $('#lg-title').textContent = me ? '내 계정' : lgMode === 'signup' ? '회원가입' : '로그인';
-  if (me) $('#lg-me-name').textContent = `${me.name} (${me.id})`;
+  if (me) $('#lg-me-name').textContent = `${me.store ? me.store + ' · ' : ''}${me.name} (${me.id})`;
   $('#lg-err').textContent = ''; openModal('login'); if (!me) setTimeout(() => $('#lg-id').focus(), 30);
 }
-function setLgMode(mode) { lgMode = mode; document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.classList.toggle('on', t.dataset.lg === mode)); $('#lg-pw2').hidden = $('#lg-name').hidden = mode !== 'signup'; $('#lg-go').textContent = mode === 'signup' ? '가입하고 시작하기' : '로그인'; $('#lg-title').textContent = mode === 'signup' ? '회원가입' : '로그인'; $('#lg-pw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password'; $('#lg-err').textContent = ''; }
+function setLgMode(mode) { lgMode = mode; document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.classList.toggle('on', t.dataset.lg === mode)); $('#lg-pw2').hidden = $('#lg-name').hidden = mode !== 'signup'; if ($('#lg-store')) $('#lg-store').hidden = mode !== 'signup' || !ACAD; $('#lg-name').placeholder = ACAD ? '대표자명 (수료증에 표시)' : '이름 (강의실·수료증에 표시)'; if ($('#lg-forgot')) $('#lg-forgot').hidden = mode === 'signup' || !ACAD; $('#lg-go').textContent = mode === 'signup' ? '가입하고 시작하기' : '로그인'; $('#lg-title').textContent = mode === 'signup' ? '회원가입' : '로그인'; $('#lg-pw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password'; $('#lg-err').textContent = ''; }
 async function submitLogin() {
   const id = $('#lg-id').value, pw = $('#lg-pw').value; $('#lg-err').textContent = '';
-  if (lgMode === 'signup') { if (pw !== $('#lg-pw2').value) { $('#lg-err').textContent = '비밀번호 확인이 맞지 않아요.'; return; } const nm = $('#lg-name').value.trim(); if (nm) { const [ok, er] = validName(nm); if (!ok) { $('#lg-err').textContent = er; return; } } }
+  if (lgMode === 'signup') { if (pw !== $('#lg-pw2').value) { $('#lg-err').textContent = '비밀번호 확인이 맞지 않아요.'; return; } const nm = $('#lg-name').value.trim(); if (ACAD && (!nm || !$('#lg-store')?.value.trim())) { $('#lg-err').textContent = '점포명과 대표자명을 모두 적어 주세요.'; return; } if (nm) { const [ok, er] = validName(nm); if (!ok) { $('#lg-err').textContent = er; return; } } }
   $('#lg-go').disabled = true; $('#lg-go').textContent = '확인 중…';
-  let r; try { r = await withTimeout(lgMode === 'signup' ? account.signup(id, pw, $('#lg-name').value) : account.login(id, pw), 20000); } catch (e) { r = { ok: false, msg: '연결이 늦어요. 잠시 후 다시 시도해 주세요.' }; }
+  let r; try { r = await withTimeout(lgMode === 'signup' ? account.signup(id, pw, { owner: $('#lg-name').value, store: ACAD ? ($('#lg-store')?.value || '') : '', need: ACAD }) : account.login(id, pw), 20000); } catch (e) { r = { ok: false, msg: '연결이 늦어요. 잠시 후 다시 시도해 주세요.' }; }
   $('#lg-go').disabled = false; setLgMode(lgMode);
   if (!r.ok) { $('#lg-err').textContent = r.msg; return; }
   $('#lg-pw').value = $('#lg-pw2').value = ''; closeModal('login'); syncAcctUI(); toast(`${account.user.name}님, 반가워요!`);
@@ -630,6 +632,7 @@ function openLectures(cat, mine) {
   const cats = LECTURE_CATS.filter(c => LECTURES.some(l => l.cat === c)).concat([...new Set(LECTURES.map(l => l.cat))].filter(c => !LECTURE_CATS.includes(c)));
   const doneN = LECTURES.filter(l => account.prog[l.id]?.done).length, enN = LECTURES.filter(l => account.prog[l.id]?.enrolled).length;
   $('#lc-title').textContent = mine ? '내 강의' : '강의 목록';
+  if ($('#lc-src-note')) $('#lc-src-note').textContent = ACAD ? '강의 영상은 용마미식거리 유튜브 채널(일부 공개)에서 강의실 안으로 재생하고, 실제로 본 구간만 진도로 기록합니다. 영상이 올라오지 않은 강의는 \'영상 준비 중\'으로 보여요.' : '강의는 유튜브 플레이어로 재생합니다. 강의를 틀면 같은 방 사람들에게 \'함께 듣기\' 안내가 갑니다.';
   const cur = mine ? '내 강의' : (cat || '전체');
   $('#lc-tabs').innerHTML = ['내 강의', '전체', ...cats].map(c => `<button class="lc-tab${cur === c ? ' on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('') + `<span class="lc-done">${account.user ? `${esc(account.user.name)}님 · 신청 ${enN} · 수료 ${doneN}/${LECTURES.length}` : '로그인하면 진도가 저장돼요'}</span>`;
   document.querySelectorAll('#lc-tabs .lc-tab').forEach(b => b.onclick = () => b.dataset.c === '내 강의' ? openLectures(null, true) : openLectures(b.dataset.c === '전체' ? null : b.dataset.c));
@@ -637,7 +640,7 @@ function openLectures(cat, mine) {
   const cont = LECTURES.filter(l => account.prog[l.id]?.enrolled && !account.prog[l.id]?.done).sort((a, b) => (account.prog[b.id].last || account.prog[b.id].enrolled) - (account.prog[a.id].last || account.prog[a.id].enrolled))[0];
   const contHtml = mine && cont ? `<div class="lc-cont"><span><em>이어서 듣기</em><b>${esc(cont.t)}</b><small>진도 ${account.pct(cont.id)}% · ${fmtT(account.prog[cont.id].pos)}부터</small></span><button class="btn primary" id="lc-cont-go">${account.prog[cont.id].pos > 5 ? '이어보기' : '수업보기'}</button></div>` : '';
   $('#lc-detail').hidden = true; $('#lc-list').hidden = false;
-  $('#lc-list').innerHTML = contHtml + (list.length ? `<div class="lc-grid">${list.map(l => { const s = lecState(l.id); const r = account.prog[l.id] || {}; return `<button class="lc-item" data-id="${l.id}"><span class="lc-thumb"><img src="https://i.ytimg.com/vi/${l.id}/mqdefault.jpg" alt="" loading="lazy">${s.k === 'done' ? '<i class="lc-badge">수료</i>' : r.pos ? `<i class="lc-badge go">${fmtT(r.pos)}부터 이어보기</i>` : ''}</span><span><em>${esc(l.cat)}</em><b>${esc(l.t)}</b><small>${esc(l.by)} · ${esc(l.len)}</small><small class="lc-who">대상 ${esc(l.who || '')} · ${esc(l.learn || '')}</small><i class="lc-status ${s.k}">${s.label}</i>${s.k !== 'none' ? `<span class="lc-bar${s.k === 'done' ? ' done' : ''}"><i style="width:${s.k === 'done' ? 100 : account.pct(l.id)}%"></i></span>` : ''}</span></button>`; }).join('')}</div>` : '<p class="small muted">아직 신청한 강의가 없어요. 전체 목록에서 강의를 골라 수강신청해 보세요.</p>');
+  $('#lc-list').innerHTML = contHtml + (list.length ? `<div class="lc-grid">${list.map(l => { const s = lecState(l.id); const r = account.prog[l.id] || {}; return `<button class="lc-item" data-id="${l.id}"><span class="lc-thumb">${lecThumb(l)}${s.k === 'done' ? '<i class="lc-badge">수료</i>' : r.pos ? `<i class="lc-badge go">${fmtT(r.pos)}부터 이어보기</i>` : ''}</span><span><em>${esc(l.cat)}</em><b>${esc(l.t)}</b><small>${esc(l.by)}${l.len ? ' · ' + esc(l.len) : ''}</small><small class="lc-who">대상 ${esc(l.who || '')} · ${esc(l.learn || '')}</small><i class="lc-status ${s.k}">${s.label}</i>${s.k !== 'none' ? `<span class="lc-bar${s.k === 'done' ? ' done' : ''}"><i style="width:${s.k === 'done' ? 100 : account.pct(l.id)}%"></i></span>` : ''}</span></button>`; }).join('')}</div>` : '<p class="small muted">아직 신청한 강의가 없어요. 전체 목록에서 강의를 골라 수강신청해 보세요.</p>');
   if ($('#lc-cont-go')) $('#lc-cont-go').onclick = () => { closeModal('lectures'); const r = account.prog[cont.id]; playLecture(cont.id, r.pos > 5 ? r.pos : 0, false); };
   document.querySelectorAll('#lc-list .lc-item').forEach(el => el.onclick = () => openLectureDetail(el.dataset.id));
   if (!openModals.has('lectures')) openModal('lectures');
@@ -650,7 +653,7 @@ async function openLectureDetail(id) {
     : !r.enrolled ? '<button class="btn primary" id="lc-enroll">수강신청</button>'
     : `<button class="btn primary" id="lc-play">${r.pos > 5 && !r.done ? `이어보기 ${fmtT(r.pos)}` : r.done ? '다시 보기' : '수업보기'}</button>${r.pos > 5 && !r.done ? '<button class="btn" id="lc-play0">처음부터</button>' : ''}${r.done ? '<button class="btn" id="lc-cert">수료증 보기</button>' : ''}`;
   d.innerHTML = `<button class="lc-back" id="lc-back">← 강의 목록</button>
-    <div class="lc-head"><img src="https://i.ytimg.com/vi/${l.id}/mqdefault.jpg" alt=""><div><em>${esc(l.cat)}</em><h3>${esc(l.t)}</h3><p class="small muted">${esc(l.by)} · ${esc(l.len)}</p><p class="small"><b>대상</b> ${esc(l.who || '')}<br><b>배울 것</b> ${esc(l.learn || '')}</p>
+    <div class="lc-head">${lecThumb(l)}<div><em>${esc(l.cat)}</em><h3>${esc(l.t)}</h3><p class="small muted">${esc(l.by)}${l.len ? ' · ' + esc(l.len) : ''}</p><p class="small"><b>대상</b> ${esc(l.who || '')}<br><b>배울 것</b> ${esc(l.learn || '')}</p>
     ${r.enrolled ? `<p class="small"><i class="lc-status ${s.k}">${s.label}</i> 실제로 본 시간 ${fmtT(account.watched(id))} / ${fmtT(r.dur || lecSec(l.len))} · 수료 기준 90% 시청${r.done ? ` · 수료일 ${new Date(r.done).toLocaleDateString('ko-KR')}` : ''}</p><span class="lc-bar${r.done ? ' done' : ''}"><i style="width:${r.done ? 100 : pct}%"></i></span>` : ''}
     <div class="bt-btns">${btns}</div></div></div>
     <section class="lc-sec"><h4>내 가게 실행 체크리스트</h4><ul class="lc-check">${(l.check || []).map((c, i) => `<li><label><input type="checkbox" data-i="${i}" ${r.ck && r.ck[i] ? 'checked' : ''} ${account.user ? '' : 'disabled'}> ${esc(c)}</label></li>`).join('')}</ul><button class="btn" id="lc-dl">체크리스트 내려받기</button></section>
@@ -666,7 +669,7 @@ async function openLectureDetail(id) {
   if ($('#lc-cert')) $('#lc-cert').onclick = () => showCert(id);
   d.querySelectorAll('.lc-check input').forEach(cb => cb.onchange = () => { const R2 = account.rec(id); R2.ck = R2.ck || {}; R2.ck[cb.dataset.i] = cb.checked; account.save(); });
   $('#lc-note').oninput = e => { const R2 = account.rec(id); R2.note = e.target.value; account.save(); };
-  $('#lc-dl').onclick = () => { const P = account.prog[id] || {}; const txt = `[${SPACES.lecture?.name || '강의실'}] ${l.t}\n${l.by} · ${l.len}\nhttps://youtu.be/${l.id}\n진도 ${account.pct(id)}%${P.done ? ' · 수료' : ''}\n\n내 가게 실행 체크리스트\n${(l.check || []).map((c, i) => `${P.ck && P.ck[i] ? '[v]' : '[ ]'} ${c}`).join('\n')}\n\n내 가게에 적용할 한 가지\n${P.note || ''}\n`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })); a.download = `체크리스트_${l.t.replace(/[\\/:*?"<>|]/g, '')}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+  $('#lc-dl').onclick = () => { const P = account.prog[id] || {}; const txt = `[${SPACES.lecture?.name || '강의실'}] ${l.t}\n${l.by} · ${l.len}\n${l.yt ? 'https://youtu.be/' + l.yt + '\\n' : ''}진도 ${account.pct(id)}%${P.done ? ' · 수료' : ''}\n\n내 가게 실행 체크리스트\n${(l.check || []).map((c, i) => `${P.ck && P.ck[i] ? '[v]' : '[ ]'} ${c}`).join('\n')}\n\n내 가게에 적용할 한 가지\n${P.note || ''}\n`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })); a.download = `체크리스트_${l.t.replace(/[\\/:*?"<>|]/g, '')}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const renderQA = async () => {
     let list = []; try { list = await withTimeout(net.boardList('lec-' + id), 8000); } catch (e) { $('#lc-qa').innerHTML = '<p class="small muted">질문을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>'; return; }
     $('#lc-qa').innerHTML = list.length ? list.slice(-30).reverse().map(q => `<div class="lc-qi"><b>${esc(q.nm || '손님')}</b>${q.at ? `<span class="lc-at">${fmtT(q.at)}</span>` : ''}<p>${esc(q.text)}</p></div>`).join('') : '<p class="small muted">아직 질문이 없어요. 첫 질문을 남겨 보세요.</p>';
@@ -690,9 +693,11 @@ async function openLectureVideo(id, start) {
   let host = $('#vd-player'); if (!host) { host = document.createElement('div'); host.id = 'vd-player'; frame.parentNode.appendChild(host); }
   const bar = $('#vd-prog'); const upd = () => { const r = account.prog[id] || {}; bar.hidden = false; bar.className = 'vd-prog' + (r.done ? ' done' : ''); bar.textContent = r.done ? '수료 완료' : `진도 ${account.pct(id)}% · 수료 90%`; };
   upd(); sound.duck(true); openModal('video');
+  if (!l.yt) { stopLecturePlayer(); bar.hidden = true; host.innerHTML = `<div class="vd-wait"><b>영상 준비 중이에요</b><p>「${esc(l.t)}」 영상을 강의실에 올리는 중입니다. 올라오면 이 자리에서 바로 재생되고 진도가 기록돼요.</p></div>`; return; }
   const YT = await loadYT(); stopLecturePlayer(); upd();
+  { const h2 = $('#vd-player'); if (h2) h2.innerHTML = ''; }
   let prev = null;
-  ytPlayer = new YT.Player('vd-player', { videoId: id, host: 'https://www.youtube-nocookie.com', playerVars: { autoplay: 1, start: Math.floor(start || 0), rel: 0, playsinline: 1, modestbranding: 1 },
+  ytPlayer = new YT.Player('vd-player', { videoId: l.yt, host: 'https://www.youtube-nocookie.com', playerVars: { autoplay: 1, start: Math.floor(start || 0), rel: 0, playsinline: 1, modestbranding: 1 },
     events: { onStateChange: e => { if (e.data !== 1) prev = null; if (e.data === 0) { const t = ytPlayer.getDuration(); if (prev !== null) account.addSeen(id, prev, t, t); upd(); } } } });
   ytTimer = setInterval(() => {
     if (!ytPlayer || !ytPlayer.getPlayerState) return; let st, t, dur; try { st = ytPlayer.getPlayerState(); t = ytPlayer.getCurrentTime(); dur = ytPlayer.getDuration(); } catch (e) { return; }

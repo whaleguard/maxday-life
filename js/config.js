@@ -328,7 +328,16 @@ export const ARCADE = {
 // v4 — 강의실: 입장해서 강의 영상 듣기 (같은 방 사람과 함께 듣기)
 // 강의는 유튜브 공식·공개 강의를 퍼가기로 재생. 거래처별로 window.MDL_BRAND.lectures 로 교체
 export const LECTURE_CATS = ['매출 올리기', '가게 홍보', '창업 기초', '매장 운영'];
-export const LECTURES = _B.lectures || [
+// 용마 점주 아카데미: 세일즈 매니저 30강 (원본 MYBOX → 유튜브 '일부 공개'로 올린 뒤 yt 칸에 영상 ID를 채움. 비어 있으면 '영상 준비 중')
+const SALES30_YT = {}; // 예: { s01: 'abcdEFGhijk', ... }
+const SALES30_T = {};  // 실제 제목 (영상 첫 화면 기준) — 확인되는 대로 채움
+const SALES30_CAT = n => n <= 8 ? '영업 기초' : n <= 16 ? '고객 응대' : n <= 23 ? '매출 관리' : '홍보·성장';
+export const LECTURE_SETS = {
+  sales30: Array.from({ length: 30 }, (_, i) => { const n = i + 1, id = 's' + String(n).padStart(2, '0');
+    return { id, n, yt: SALES30_YT[id] || '', t: `${n}강 · ${SALES30_T[id] || '세일즈 매니저 과정'}`, by: '세일즈 매니저 과정', len: '', cat: SALES30_CAT(n), who: '용마거리 점주님', learn: SALES30_T[id] ? SALES30_T[id] + '을(를) 배워요' : '판매·응대·매출 관리 실무를 배워요',
+      check: ['오늘 배운 내용 중 우리 가게에 쓸 것 1가지 적기', '내일 매장에서 바로 해볼 행동 정하기', '1주일 뒤 결과(손님 반응·매출) 적어 보기'] }; }),
+};
+export const LECTURES = _B.lectures || LECTURE_SETS[_B.lectureSet] || [
   { id: 'pvijV5bguUo', t: '음식점 메뉴가격 결정 법칙 7가지', by: '김영갑교수TV', len: '26:15', cat: '매출 올리기', who: '음식점·먹거리부스 운영자', learn: '메뉴 가격을 정하는 기준을 배워요',
     check: ['대표 메뉴 3개의 재료비(원가) 계산하기', '메뉴별 원가율 확인하고 목표 원가율 정하기', '주변 가게 같은 메뉴 가격 3곳 조사하기', '세트·추가 메뉴로 객단가 올릴 방법 1가지 정하기'] },
   { id: 'eDzpZT9EeiA', t: '온라인 시장의 이해', by: '소상공인시장진흥공단 · 소상공인지식배움터', len: '4:36:46', cat: '매출 올리기', who: '온라인 판매를 시작하려는 상인', learn: '온라인 시장 구조와 판로를 이해해요',
@@ -344,6 +353,8 @@ export const LECTURES = _B.lectures || [
   { id: 'h4Jd6aBrXuA', t: '네이버 지역소상공인 광고 등록하는 법', by: '자립마케팅 (소상공인 마케팅팀)', len: '20:43', cat: '가게 홍보', who: '광고를 처음 해보는 점주', learn: '지역 광고를 직접 등록하는 순서를 따라 해요',
     check: ['광고 예산(하루·한 달) 정하기', '광고에 쓸 대표 사진·문구 준비하기', '1주일 뒤 노출·클릭 수 확인하기'] },
 ];
+LECTURES.forEach(l => { if (l.yt === undefined) l.yt = l.id; });
+export const LECTURE_SOURCE = _B.lectureSet === 'sales30' ? '세일즈 매니저 과정 30강' : '유튜브 공개 강의';
 if (EXTRA.includes('lecture')) {
   SPACES.lecture = {
     key: 'lecture', name: _B.lectureName || S + ' 강의실', desc: '강의 듣기 · 함께 보기', btn: '강의실 가기', short: '강의실',
