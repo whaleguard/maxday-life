@@ -16,21 +16,28 @@ export class Account {
   get user() { return this.s; }
   get server() { return this.net.mode !== 'mqtt'; }
   validId(id) { return /^[a-z0-9_]{4,16}$/.test(id); }
-  async signup(id, pw, name) {
-    id = String(id || '').trim().toLowerCase(); name = String(name || '').trim().slice(0, 12) || id;
+  // 가입: 아이디·비밀번호 + 점포명·대표자명(필수) — 대표자명이 강의실·수료증 이름
+  async signup(id, pw, info = {}) {
+    if (typeof info === 'string') info = { owner: info };
+    id = String(id || '').trim().toLowerCase();
+    const store = String(info.store || '').trim().slice(0, 30), owner = String(info.owner || '').trim().slice(0, 12);
     if (!this.validId(id)) return { ok: false, msg: '아이디는 영문 소문자·숫자 4~16자로 정해 주세요.' };
     if (String(pw || '').length < 8) return { ok: false, msg: '비밀번호는 8자 이상으로 정해 주세요.' };
+    if (info.need && (!store || !owner)) return { ok: false, msg: '점포명과 대표자명을 모두 적어 주세요.' };
+    const name = owner || id;
     if (this.server) {
-      const r = await this.net.acct('signup', { id, pw, name });
+      const r = await this.net.acct('signup', { id, pw, name, store, owner });
       if (!r.ok) return { ok: false, msg: r.reason === 'taken' ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.' };
-      return this._start({ id, name: r.name, token: r.token });
+      return this._start({ id, name: r.name, store, token: r.token });
     }
     const key = 'acct/' + await sha(this.ns + ':' + id);
     if (await this.net.kvGet(key)) return { ok: false, msg: '이미 쓰는 아이디예요.' };
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
     const hash = await pbkdf2(pw, salt);
-    await this.net.kvPut(key, { name, salt, hash, at: Date.now() });
-    return this._start({ id, name, pkey: await sha(id + ':' + hash) });
+    const pk = hex(crypto.getRandomValues(new Uint8Array(16))); // 진도 보관 키 — 비밀번호·아이디를 바꿔도 그대로
+    const at = Date.now();
+    await this.net.kvPut(key, { id, name, store, owner, salt, hash, pk, at, last: at });
+    return this._start({ id, name, store, pkey: pk });
   }
   async login(id, pw) {
     id = String(id || '').trim().toLowerCase();
@@ -38,13 +45,16 @@ export class Account {
     if (this.server) {
       const r = await this.net.acct('login', { id, pw });
       if (!r.ok) return { ok: false, msg: '아이디 또는 비밀번호가 맞지 않아요.' };
-      return this._start({ id, name: r.name, token: r.token });
+      return this._start({ id, name: r.name, store: r.store || '', token: r.token });
     }
-    const rec = await this.net.kvGet('acct/' + await sha(this.ns + ':' + id));
-    if (!rec) return { ok: false, msg: '아이디 또는 비밀번호가 맞지 않아요.' };
+    const key = 'acct/' + await sha(this.ns + ':' + id);
+    const rec = await this.net.kvGet(key);
+    if (!rec || rec.off) return { ok: false, msg: '아이디 또는 비밀번호가 맞지 않아요.' };
     const hash = await pbkdf2(pw, rec.salt);
     if (hash !== rec.hash) return { ok: false, msg: '아이디 또는 비밀번호가 맞지 않아요.' };
-    return this._start({ id, name: rec.name, pkey: await sha(id + ':' + hash) });
+    const pk = rec.pk || await sha(id + ':' + hash);
+    try { await this.net.kvPut(key, { ...rec, id, pk, last: Date.now() }); } catch (e) {}
+    return this._start({ id, name: rec.name, store: rec.store || '', pkey: pk });
   }
   async _start(s) { this.s = s; ls.set(LS + this.ns, JSON.stringify(s)); await this.load(); return { ok: true }; }
   logout() { this.s = null; this.prog = {}; ls.del(LS + this.ns); }
