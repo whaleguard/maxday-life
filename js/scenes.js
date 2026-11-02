@@ -5,7 +5,7 @@ import { SPACES, GARDEN, PLAYGROUND, TEMPLE_MACHINE, XMAS_TREE, ANNEX, PROGRAMS,
 import { NavGrid, textTexture } from './engine.js';
 import { M as CM, GOLD, rbox, loadTex, woodFloorTex, stoneTex, plasterTex, dancheongTex, plantPot, lotusLantern, candleStick } from './world/common.js';
 import { starGeo } from './character.js';
-import { buildFoodStreet, buildArcade } from './world/street.js';
+import { buildFoodStreet, buildArcade, buildLecture } from './world/street.js';
 
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0, ...o });
 const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -69,7 +69,7 @@ export function buildInterior(key, { low, reduced }) {
   const { w, d, h } = sp.room;
   const X0 = ax && ax.side < 0 ? ax.x0 : -w / 2, X1 = ax && ax.side > 0 ? ax.x1 : w / 2;
   const Z0 = -d / 2, Z1 = d / 2;
-  const tone = { temple: ['#1a1310', '#2a1d16'], church: ['#2b241c', '#3a3026'], cathedral: ['#151a22', '#232a35'], playground: ['#2a3336', '#3a4548'], cafe: ['#2b241c', '#3a3026'], restaurant: ['#241c17', '#33281f'], foodstreet: ['#0E1F4D', '#16224a'], arcade: ['#140f24', '#1d1830'] }[key];
+  const tone = { temple: ['#1a1310', '#2a1d16'], church: ['#2b241c', '#3a3026'], cathedral: ['#151a22', '#232a35'], playground: ['#2a3336', '#3a4548'], cafe: ['#2b241c', '#3a3026'], restaurant: ['#241c17', '#33281f'], foodstreet: ['#0E1F4D', '#16224a'], arcade: ['#140f24', '#1d1830'], lecture: ['#2a2e2c', '#3a3f3c'] }[key];
   const outdoor = !!sp.outdoor;
   scene.background = new THREE.Color(tone[0]);
   scene.fog = new THREE.Fog(tone[0], 22, 48);
@@ -86,6 +86,7 @@ export function buildInterior(key, { low, reduced }) {
     : key === 'church' ? woodFloorTex('#9a7754', { planks: 8, repeat: [w / 3, d / 3], seed: 4 })
     : key === 'cathedral' ? stoneTex('#bdb7ab', { tiles: 4, repeat: [w / 2, d / 2] })
     : key === 'cafe' ? woodFloorTex('#b88a5e', { planks: 12, repeat: [w / 3, d / 3], seed: 31, light: 0.1 })
+    : key === 'lecture' ? woodFloorTex('#BE9870', { planks: 10, repeat: [w / 3, d / 3], seed: 21, light: 0.08 })
     : key === 'restaurant' ? stoneTex('#8f7d6b', { tiles: 3, repeat: [w / 1.6, d / 1.6], grout: '#6f5f50' })
     : woodFloorTex('#d7c3a0', { planks: 10, repeat: [w / 3, d / 3], seed: 12, light: 0.08 });
   const floorMat = STORES[key] ? photoMat(key === 'cafe' ? 'parquet' : 'terrazzo', w / (key === 'cafe' ? 2.2 : 2.6), d / (key === 'cafe' ? 2.2 : 2.6), { roughness: key === 'cafe' ? 0.45 : 0.32, nor: true, color: key === 'cafe' ? '#e8d8c4' : '#ffffff' })
@@ -133,6 +134,7 @@ export function buildInterior(key, { low, reduced }) {
   if (key === 'playground') buildPlaygroundInterior(scene, obs, seats, machines, clickables, anim, reduced);
   if (STORES[key]) props.tables = buildStoreInterior(scene, key, obs, seats, clickables, anim, w, d, h, props);
   if (key === 'foodstreet') buildFoodStreet(scene, { w, d, obs, seats, clickables, anim, props, addScreen, low });
+  if (key === 'lecture') buildLecture(scene, { w, d, h, obs, seats, clickables, anim, props, addScreen, brand: SPACES.foodstreet && SPACES.foodstreet.outdoor && !!(typeof window !== 'undefined' && window.MDL_BRAND && (window.MDL_BRAND.extra || []).includes('foodstreet')) });
   if (key === 'arcade') buildArcade(scene, { w, d, h, obs, seats, machines, clickables, anim, props, buildMachine });
   // 영상 스크린
   const SCR = { church: { x: 4.8, y: 3.7, z: -d / 2 + 0.08, w: 2.4, h: 1.35 }, cathedral: { x: 4.6, y: 3.6, z: -d / 2 + 0.08, w: 2.4, h: 1.35 }, cafe: { x: -w / 2 + 0.08, y: 2.45, z: -4.0, ry: Math.PI / 2, w: 2.2, h: 1.24 }, restaurant: { x: -w / 2 + 0.08, y: 2.45, z: 3.2, ry: Math.PI / 2, w: 2.4, h: 1.35 } }[key];
@@ -149,7 +151,7 @@ export function buildInterior(key, { low, reduced }) {
   for (const s of seats) nav.unblockAt(s.approach[0], s.approach[1], 0.2);
   for (const m of machines) if (m.userData.approach) nav.unblockAt(m.userData.approach[0], m.userData.approach[1], 0.2);
   if (props.shop) nav.unblockAt(props.shop.userData.approach[0], props.shop.userData.approach[1], 0.2);
-  for (const o of [props.photo, ...(props.booths || [])]) if (o && o.userData.approach) nav.unblockAt(o.userData.approach[0], o.userData.approach[1], 0.2);
+  for (const o of [props.photo, props.board, ...(props.booths || [])]) if (o && o.userData.approach) nav.unblockAt(o.userData.approach[0], o.userData.approach[1], 0.2);
   if (props.lectern) nav.unblockAt(props.lectern.userData.approach[0], props.lectern.userData.approach[1], 0.2);
   if (candles) nav.unblockAt(candles.access[0], candles.access[1], 0.2);
 
@@ -842,11 +844,13 @@ export function buildStoreInterior(scene, key, obs, seats, clickables, anim, w, 
 }
 
 /* ================= 영상 스크린 (교회 설교·성당 미사·카페/식당 홍보) ================= */
+const _B_ACAD = typeof window !== 'undefined' && (window.MDL_BRAND?.only || []).join() === 'lecture';
 const SCREEN_SLIDES = {
   church: [['오늘의 말씀', '항상 기뻐하라 쉬지 말고 기도하라 범사에 감사하라 (살전 5:16-18)'], ['주일 예배', '오전 11시 · 오후 2시'], ['▶ 예배·설교 영상', '화면을 누르면 영상을 볼 수 있어요']],
   cathedral: [['매일 미사', '평일 오전 6시 · 저녁 7시 30분'], ['주님의 평화가 함께', '봉헌초를 켜고 함께 기도해요'], ['▶ 미사 영상', '화면을 누르면 미사 영상을 볼 수 있어요']],
   cafe: [['오늘의 추천', '바닐라라떼 5,500원 · 바스크 치즈케이크 6,500원'], ['자리 예약 · 미리 주문', '원하는 자리를 골라 예약하세요'], ['▶ 매장 영상', '화면을 누르면 영상을 볼 수 있어요']],
   restaurant: [['오늘의 정식', '한우 불고기 정식 16,000원'], ['룸 · 원탁 예약 가능', '단체 모임도 미리 주문까지'], ['▶ 매장 영상', '화면을 누르면 영상을 볼 수 있어요']],
+  lecture: [[_B_ACAD ? '점주 아카데미' : '강의실', _B_ACAD ? '배워서 바로 가게에 쓰는 수업' : '강의 목록에서 강의를 골라 보세요'], ['함께 듣기', '같은 방 사람이 튼 강의를 같이 들어요'], ['▶ 화면을 눌러 강의 보기', '창업·경영 · 외식 경영 · 마케팅']],
   stage: [['골목어게인', '매주 금·토 버스킹 · DJ 음악다방 · 거리노래방'], ['용마미식거리', '매주 금·토 17:00~22:00 차 없는 거리'], ['▶ 공연 영상', '화면을 누르면 영상을 볼 수 있어요']],
 };
 export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, clickables, anim) {
@@ -855,10 +859,10 @@ export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, c
   const c = document.createElement('canvas'); c.width = 1024; c.height = Math.round(1024 * h / w); const ctx = c.getContext('2d');
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.z = 0.045; scr.userData.noShadow = true; g.add(scr);
-  const slides = SCREEN_SLIDES[kind]; let i = -1;
+  let slides = SCREEN_SLIDES[kind]; let i = -1;
   const draw = () => {
     i = (i + 1) % slides.length; const [t1, t2] = slides[i]; const W = c.width, H = c.height;
-    const gr = ctx.createLinearGradient(0, 0, W, H); const pal = { church: ['#3b2a1e', '#7a5a3a'], cathedral: ['#1f2a44', '#4b3a6b'], cafe: ['#3a2a1e', '#8a5f3f'], restaurant: ['#3a1e1a', '#7a3a2a'], stage: ['#0E1F4D', '#7a2e0e'] }[kind] || ['#222', '#555'];
+    const gr = ctx.createLinearGradient(0, 0, W, H); const pal = { church: ['#3b2a1e', '#7a5a3a'], cathedral: ['#1f2a44', '#4b3a6b'], cafe: ['#3a2a1e', '#8a5f3f'], restaurant: ['#3a1e1a', '#7a3a2a'], stage: ['#0E1F4D', '#7a2e0e'], lecture: _B_ACAD ? ['#49334F', '#6b4a72'] : ['#1F4A3F', '#2f5d50'] }[kind] || ['#222', '#555'];
     gr.addColorStop(0, pal[0]); gr.addColorStop(1, pal[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = 'rgba(255,230,180,.08)'; for (let k = 0; k < 8; k++) { ctx.beginPath(); ctx.arc(W * (0.1 + k * 0.12), H * 0.85, 40 + k * 6, 0, Math.PI * 2); ctx.fill(); }
     ctx.textAlign = 'center'; ctx.fillStyle = '#F7EBD3'; ctx.font = `700 ${Math.round(H * 0.16)}px "Noto Sans KR", sans-serif`; ctx.fillText(t1, W / 2, H * 0.42);
@@ -870,5 +874,6 @@ export function addScreen(scene, kind, { x, y, z, ry = 0, w = 2.6, h = 1.46 }, c
   draw(); let acc = 0; anim.push((t, dt) => { acc += dt; if (acc > 4.5) { acc = 0; draw(); } });
   const glow = new THREE.PointLight('#ffe2b0', 1.2, 4, 2); glow.position.set(0, 0, 0.8); g.add(glow);
   g.userData.videoScreen = kind; clickables.push(g);
+  g.userData.setTitle = (t) => { slides = [['▶ 지금 강의', t], ['함께 듣기', '화면을 누르면 같은 장면부터 이어서 봐요']]; i = -1; draw(); };
   return g;
 }

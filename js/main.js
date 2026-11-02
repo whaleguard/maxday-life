@@ -1,7 +1,7 @@
 // 맥스데이 라이프 — 앱 진입점: 지도(입구) → 공간 입장, 3인칭 캐릭터 조작, 실시간 동기화, 공간 기능(염주·말씀·찬송·샵·12지신·기계)
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY, VIDEOS, STREET, ARCADE } from './config.js';
+import { BRAND, SPACES, SPACE_ORDER, BUTTON_STYLE, NAME_ADJ, NAME_NOUN, TEXT, PROGRAMS, DEMO_URL, GACHA, ANNEX, CHARACTER, ROOM_CAPACITY, VIDEOS, STREET, ARCADE, LECTURES, LECTURE_CATS, MQTT_NS } from './config.js';
 import { createRenderer, Labels, disposeObject } from './engine.js';
 import { buildInterior } from './scenes.js';
 import { buildMap, MAP_SPOTS, DRIVE_IN } from './world/map.js';
@@ -14,6 +14,7 @@ import { Beads } from './features/beads.js';
 import { ZODIAC, zodiacOfYear, todayWord } from './features/zodiac.js';
 import { CATALOG, Points, Owned, Wear, itemName, PAYMENT } from './features/shop.js';
 import { ReserveUI } from './features/reserve.js';
+import { Account, loadYT } from './features/account.js';
 import { STORES } from './features/stores.js';
 
 const $ = s => document.querySelector(s);
@@ -27,6 +28,7 @@ const settings = Object.assign({ names: true, reduce: matchMedia('(prefers-reduc
 const isMobile = matchMedia('(pointer:coarse)').matches && Math.min(innerWidth, innerHeight) < 700;
 const sound = new SoundScape();
 const net = createNet(SID);
+const account = new Account(net, MQTT_NS);
 const app = {
   mode: 'map', world: null, cam: new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 400),
   me: null, peers: new Map(), npcs: [], space: null, room: 0, locked: false, busy: false,
@@ -38,7 +40,7 @@ const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
 const clock = new THREE.Clock();
 let beads, reserve;
 const isStore = k => !!STORES[k];
-const roomWord = k => k === 'temple' ? '법당' : k === 'playground' ? '놀이방' : isStore(k) ? '매장' : k === 'foodstreet' ? '골목' : k === 'arcade' ? '게임장' : '예배실';
+const roomWord = k => k === 'temple' ? '법당' : k === 'playground' ? '놀이방' : isStore(k) ? '매장' : k === 'foodstreet' ? '골목' : k === 'arcade' ? '게임장' : k === 'lecture' ? '강의실' : '예배실';
 
 /* ---------------- 시작 ---------------- */
 function applyBrand() {
@@ -82,9 +84,19 @@ function boot() {
 }
 
 /* ---------------- 지도(입구) ---------------- */
-function applyRoomLogo() { const im = $('#room-logo'); if (!im) return; if (SPACE_ORDER[0] === 'foodstreet') { im.src = BRAND.logo; im.hidden = false; } }
+function wireAccount() {
+  if (BRAND.sister && !document.getElementById('sister-pill')) { const s = document.createElement('a'); s.id = 'sister-pill'; s.className = 'pill'; s.href = BRAND.sister.url; s.target = '_blank'; s.rel = 'noopener'; s.innerHTML = `<span class="ico">↗</span><span class="lbl">${esc(BRAND.sister.label)}</span>`; s.title = BRAND.sister.label; s.setAttribute('aria-label', BRAND.sister.label); document.querySelector('.g-menu').insertBefore(s, $('#acct-pill')); }
+  $('#acct-pill').onclick = () => openLogin(null);
+  document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.onclick = () => setLgMode(t.dataset.lg));
+  $('#lg-go').onclick = submitLogin; ['lg-id', 'lg-pw', 'lg-pw2', 'lg-name'].forEach(k => $('#' + k).onkeydown = e => { if (e.key === 'Enter') submitLogin(); });
+  $('#lg-out').onclick = () => { account.logout(); syncAcctUI(); closeModal('login'); toast('로그아웃했어요.'); if (app.space === 'lecture') leaveToMap(); };
+  $('#lg-mylec').onclick = () => { closeModal('login'); openLectures(null, true); };
+  syncAcctUI(); if (account.user) account.load();
+}
+if ((window.MDL_BRAND?.only || []).join() === 'lecture') { document.documentElement.classList.add('theme-academy'); addEventListener('DOMContentLoaded', () => {}); setTimeout(() => { const g = document.querySelector('.g-guide'); if (g) g.textContent = '점주님, 로그인하고 수업을 들어 보세요.'; }, 0); }
+function applyRoomLogo() { const im = $('#room-logo'); if (!im) return; if (SPACE_ORDER[0] === 'foodstreet' || SPACE_ORDER.join() === 'lecture') { im.src = BRAND.logo; im.hidden = false; } }
 function buildEnterButtons() {
-  applyRoomLogo();
+  applyRoomLogo(); if (!wireAccount.done) { wireAccount.done = true; wireAccount(); }
   const grid = $('#enter-grid'); grid.innerHTML = ''; grid.classList.toggle('n8', SPACE_ORDER.length === 8); grid.classList.toggle('n7', SPACE_ORDER.length === 7);
   for (const key of SPACE_ORDER) {
     const sp = SPACES[key], st = BUTTON_STYLE[key];
@@ -102,7 +114,7 @@ function buildEnterButtons() {
     b.onclick = () => { const [x, , z] = DRIVE_IN.pos; app.mapUser = true; setCamTween({ pos: [x, 15, z + 30], look: [x, 7, z] }, 1.4); setTimeout(() => openVideo('drivein'), 1500); };
     grid.appendChild(b);
   }
-  const n = grid.children.length; ['n5', 'n7', 'n8'].forEach(c => grid.classList.toggle(c, c === 'n' + n));
+  const n = grid.children.length; ['n1', 'n5', 'n7', 'n8'].forEach(c => grid.classList.toggle(c, c === 'n' + n));
 }
 const MAP_HOME = { pos: [0, 50, 96], look: [0, 5, -16] };
 function showMap(first) {
@@ -110,7 +122,7 @@ function showMap(first) {
   app.mode = 'map'; app.space = null; app.focus = null;
   document.body.className = 'mode-map' + (settings.reduce ? ' reduce' : '');
   $('#garden-ui').hidden = false; $('#room-ui').hidden = true; $('#spot-card').hidden = true;
-  const w = buildMap({ low: settings.low }); w.scene.environment = envTex; app.world = w; setTimeout(setupDriveInVideo, 0);
+  const w = buildMap({ low: settings.low }); w.scene.environment = envTex; app.world = w; if (BRAND.drivein) setTimeout(setupDriveInVideo, 0);
   collectBillboards();
   // 건물 위 이름 핀 (HTML)
   for (const key of SPACE_ORDER) {
@@ -179,6 +191,7 @@ const SPOT_DESC = {
   restaurant: '창가·홀·원탁·룸이 있는 한식당. 오픈 주방·셀프바를 둘러보고 자리 예약과 미리 주문.',
   foodstreet: `${STREET.place} 야시장 골목. 먹거리부스 16곳·플리마켓 4곳·골목어게인 무대·접객 파라솔 (${STREET.hours}).`,
   arcade: '게임·운세 기계, 인형뽑기·랜덤박스, 키즈 존, 위드메모리 미러포토 부스.',
+  lecture: '대형 스크린 강의실. 자리에 앉아 강의를 고르면 같은 방 사람들과 함께 들을 수 있어요.',
 };
 function unfocus() { app.focus = null; document.body.classList.remove('focused'); $('#spot-card').hidden = true; setCamTween(mapHome(), 1.3); }
 
@@ -197,9 +210,10 @@ function validName(n) {
 let pending = null;
 function askName(key, room) {
   if (app.busy) return;
+  if (key === 'lecture' && !account.user) { openLogin(() => askName(key, room), '강의실은 로그인한 회원만 들어갈 수 있어요. 수강신청·진도·수료가 계정에 저장됩니다.'); return; }
   pending = { key, room };
   $('#name-space').textContent = `${SPACES[key].name} · ${room ? room + '번 방' : '빈 방 자동 안내'}`;
-  $('#name-input').value = ss.get('mdl_name') || randomName();
+  $('#name-input').value = (key === 'lecture' && account.user?.name) || ss.get('mdl_name') || randomName();
   $('#name-err').textContent = '';
   openModal('name');
   setTimeout(() => { const i = $('#name-input'); i.focus(); i.select(); }, 30);
@@ -214,6 +228,7 @@ function confirmName() {
 /* ---------------- 입장 ---------------- */
 let lastEnter = null;
 async function enterSpace(key, name, roomHint) {
+  app.roomLec = null; if (app.me) app.me.lec = null; const lb = document.getElementById('lec-banner'); if (lb) lb.hidden = true;
   if (app.busy) return;
   app.busy = true; lastEnter = { key, name, roomHint };
   await fade(true);
@@ -259,6 +274,7 @@ async function enterSpace(key, name, roomHint) {
   if (Points.daily()) toast('오늘 첫 방문 공덕 +30');
   walkTo([world.spawn[0], world.spawn[2] - 2.2]);
   renderActions(); showHintOnce(key);
+  if (key === 'lecture' && account.user) setTimeout(() => { if (app.space === 'lecture' && !openModals.size) openLectures(null, LECTURES.some(l => account.prog[l.id]?.enrolled)); }, 900);
 }
 function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]); }
 async function rejoinNextRoom() { if (!app.space || !app.me) return; const key = app.space, name = app.me.name, next = app.room + 1; net.leave(); await enterSpace(key, name, next); }
@@ -282,7 +298,7 @@ function collectBillboards() { app.billboards = []; app.world.scene.traverse(o =
 /* ---------------- 공개 상태 ---------------- */
 function publicState() {
   const m = app.me;
-  return { name: m.name, look: m.look, acc: m.acc, x: +m.x.toFixed(2), z: +m.z.toFixed(2), ry: +m.ry.toFixed(2), path: m.path ? m.path.map(p => [+p[0].toFixed(2), +p[1].toFixed(2)]) : null, seat: m.seat >= 0 ? m.seat : m.pendingSeat, act: m.act };
+  return { name: m.name, look: m.look, acc: m.acc, x: +m.x.toFixed(2), z: +m.z.toFixed(2), ry: +m.ry.toFixed(2), path: m.path ? m.path.map(p => [+p[0].toFixed(2), +p[1].toFixed(2)]) : null, seat: m.seat >= 0 ? m.seat : m.pendingSeat, act: m.act, lec: m.lec || null };
 }
 function publish() { if (app.me && app.mode === 'interior') net.setState(publicState()); }
 
@@ -388,6 +404,10 @@ function doAction(a) {
       else { me.act = 'beads'; me.char.setUpper('beads'); beads.open(+(ss.get('mdl_beads') || 0)); }
       break;
     case 'booths': openBoothList(); break;
+    case 'lectures': openLectures(); break;
+    case 'mylec': openLectures(null, true); break;
+    case 'watch': { const ids = LECTURES.map(l => l.id).filter(i => account.prog[i]?.enrolled && !account.prog[i]?.done).sort((a, b) => (account.prog[b].last || account.prog[b].enrolled) - (account.prog[a].last || account.prog[a].enrolled)); if (ids[0]) playLecture(ids[0], account.prog[ids[0]].pos > 5 ? account.prog[ids[0]].pos : 0, false); else { openLectures(); toast('들을 강의를 골라 수강신청해 주세요.'); } break; }
+    case 'lecjoin': if (app.roomLec) playLecture(app.roomLec.id, Math.max(0, (Date.now() - app.roomLec.at) / 1000), true); break;
     case 'stagevid': openVideo('stage'); break;
     case 'route': window.open(STREET.map, '_blank', 'noopener'); break;
     case 'photo': goFeature('photo', openPhoto); break;
@@ -431,10 +451,11 @@ function renderActions() {
     B('이 자리 예약', 'resv'); B('일어나기', 'stand', 'sub'); return;
   }
   if (me.seat < 0) {
-    const hints = { temple: '빈 방석을 눌러 앉으세요. 화면을 끌면 둘러볼 수 있어요.', church: '빈 의자를 눌러 앉으세요. 말씀대·찬송대·서점도 눌러 보세요.', cathedral: '장의자에 앉거나 봉헌초를 켜 보세요.', playground: '기계·랜덤박스·12지신 석상을 눌러 보세요.' , foodstreet: '부스를 누르면 걸어가서 메뉴를 볼 수 있어요. 주황 파라솔 자리에 앉아 맛보세요.', arcade: '기계를 누르면 걸어가서 바로 플레이해요. 오른쪽 인형뽑기, 앞쪽 미러포토 부스도 있어요.' };
+    const hints = { temple: '빈 방석을 눌러 앉으세요. 화면을 끌면 둘러볼 수 있어요.', church: '빈 의자를 눌러 앉으세요. 말씀대·찬송대·서점도 눌러 보세요.', cathedral: '장의자에 앉거나 봉헌초를 켜 보세요.', playground: '기계·랜덤박스·12지신 석상을 눌러 보세요.' , foodstreet: '부스를 누르면 걸어가서 메뉴를 볼 수 있어요. 주황 파라솔 자리에 앉아 맛보세요.', arcade: '기계를 누르면 걸어가서 바로 플레이해요. 오른쪽 인형뽑기, 앞쪽 미러포토 부스도 있어요.' , lecture: '빈 의자를 눌러 앉고, 강의 목록에서 강의를 고르세요. 앞 화면을 눌러도 돼요.' };
     hint.textContent = hints[app.space] || '';
     if (app.space === 'foodstreet') { B('부스 목록', 'booths'); B('무대 영상', 'stagevid', 'sub'); B('길찾기', 'route', 'sub'); }
     if (app.space === 'arcade') { B('미러포토 부스', 'photo'); }
+    if (app.space === 'lecture') { B('강의 목록', 'lectures'); B('내 강의', 'mylec', 'sub'); if (app.roomLec) B('지금 강의 함께 듣기', 'lecjoin', 'sub'); }
     if (app.space === 'cathedral') B('봉헌초로 가기', 'candles');
     if (app.space === 'church' || app.space === 'cathedral') { B('성경 말씀', 'bible'); B(app.space === 'church' ? '찬송 듣기' : '성가 듣기', 'hymn'); }
     if (app.world.props?.shop) B(app.space === 'temple' ? '불교용품' : app.space === 'church' ? '서점' : '성물방', 'shop', 'sub');
@@ -446,6 +467,7 @@ function renderActions() {
     B('일어나기', 'stand', 'sub'); return;
   }
   if (seat && seat.zone === 'rest') { hint.textContent = '잠시 쉬어가세요.'; B('일어나기', 'stand', 'sub'); return; }
+  if (app.space === 'lecture') { hint.textContent = app.roomLec ? `지금 강의: 「${(lecById(app.roomLec.id) || {}).t || ''}」` : '강의를 골라 틀면 같은 방 사람들도 함께 들을 수 있어요.'; B('수업보기', 'watch'); B('강의 목록', 'lectures', 'sub'); if (app.roomLec) B('함께 듣기', 'lecjoin'); B('일어나기', 'stand', 'sub'); return; }
   if (seat && seat.zone === 'dine' && app.space === 'foodstreet') {
     hint.textContent = '접객 파라솔이에요. 부스에서 고른 음식을 맛보세요.';
     B(me.act === 'drink' ? '먹는 중…' : '맛보기', 'drink', me.act === 'drink' ? 'on' : '').disabled = me.act === 'drink';
@@ -493,6 +515,7 @@ function useObject(obj) {
     if (ud.booth) { me.act = 'stand'; publish(); renderActions(); return openBooth(ud.booth); }
     if (ud.feature === 'boothmap') return openBoothList();
     if (ud.feature === 'photo') return openPhoto();
+    if (ud.feature === 'lectures') return openLectures();
     const info = ud.machine; if (!info) return;
     me.act = 'machine'; me.char.setUpper('use'); me.machine = info.id;
     if (ud.face !== undefined) me.ry = ud.face + Math.PI;
@@ -514,28 +537,30 @@ function openProgram(prog) {
   f.src = url; openModal('program');
 }
 // 영상 스크린: 유튜브 링크를 넣으면 재생 (브랜드 설정 BRAND.videos 또는 이 기기에서 붙여넣기)
-const VIDEO_TITLE = { church: '예배·설교 영상', cathedral: '미사 영상', cafe: '카페 영상', restaurant: '식당 영상', drivein: '자동차 극장 · 광고', stage: '골목어게인 무대 영상' };
+const VIDEO_TITLE = { lecture: '강의', church: '예배·설교 영상', cathedral: '미사 영상', cafe: '카페 영상', restaurant: '식당 영상', drivein: '자동차 극장 · 광고', stage: '골목어게인 무대 영상' };
 const VIDEO_SEARCH = { church: '주일예배 설교', cathedral: '매일미사', cafe: '카페 브이로그', restaurant: '한식당', drivein: '광고', stage: '용마미식거리 강릉' };
 function ytId(s) { s = (s || '').trim(); const m = s.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/); return m ? m[1] : /^[\w-]{11}$/.test(s) ? s : ''; }
-function openVideo(kind) {
+function openVideo(kind, opt = {}) {
+  if (kind === 'lecture' && !opt.id) { const rl = app.roomLec; if (rl) return playLecture(rl.id, Math.max(0, (Date.now() - rl.at) / 1000), true); return openLectures(); }
   const key = 'mdl_video_' + (BRAND.short || '') + '_' + kind;
-  const id = ytId(ls.get(key) || (BRAND.videos || {})[kind] || VIDEOS[kind] || '');
-  $('#vd-title').textContent = VIDEO_TITLE[kind] || '영상';
+  const id = opt.id || ytId(ls.get(key) || (BRAND.videos || {})[kind] || VIDEOS[kind] || '');
+  $('#vd-title').textContent = opt.title || VIDEO_TITLE[kind] || '영상';
+  stopLecturePlayer(); { const vp = $('#vd-player'); if (vp) vp.remove(); }
   const frame = $('#vd-frame'), empty = $('#vd-empty');
-  if (id) { frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1`; frame.hidden = false; empty.hidden = true; }
+  if (id) { frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1${opt.start ? '&start=' + Math.floor(opt.start) : ''}`; frame.hidden = false; empty.hidden = true; }
   else { frame.src = 'about:blank'; frame.hidden = true; empty.hidden = false; }
   $('#vd-search').href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(VIDEO_SEARCH[kind] || '');
   $('#vd-save').onclick = () => { const v = ytId($('#vd-url').value); if (!v) { toast('유튜브 영상 링크를 붙여넣어 주세요.'); return; } ls.set(key, v); openVideo(kind); if (kind === 'drivein') setupDriveInVideo(); };
   $('#vd-url').value = '';
   $('#vd-reset').hidden = !ls.get(key); $('#vd-reset').onclick = () => { ls.set(key, ''); openVideo(kind); if (kind === 'drivein') setupDriveInVideo(); };
-  openModal('video');
+  sound.duck(true); openModal('video');
 }
 // 지도 자동차 극장: 유튜브 링크가 있으면 접속하자마자 스크린에서 바로(소리 끔) 재생
 let driveCss = null;
 function setupDriveInVideo() {
   const id = ytId(ls.get('mdl_video_' + (BRAND.short || '') + '_drivein') || (BRAND.videos || {}).drivein || VIDEOS.drivein || '');
   if (driveCss) { driveCss.r.domElement.remove(); driveCss = null; }
-  if (!id || !DRIVE_IN.mesh || settings.low) return;
+  if (!id || !DRIVE_IN.mesh || settings.low || !BRAND.drivein) return;
   const r = new CSS3DRenderer(); r.setSize(innerWidth, innerHeight);
   Object.assign(r.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '1' });
   document.body.insertBefore(r.domElement, $('#labels'));
@@ -571,6 +596,163 @@ function openPhoto() {
   $('#ph-go').href = ARCADE.photo.url; openModal('photo');
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// 강의실: 강의 목록 · 재생 · 같은 방 함께 듣기 (내가 튼 강의는 상태로 공유 → 다른 사람에게 '함께 듣기' 안내)
+function lecById(id) { return LECTURES.find(l => l.id === id); }
+function lecSec(len) { return String(len || '0').split(':').reduce((a, b) => a * 60 + (+b || 0), 0); }
+const fmtT = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss2 = s % 60; return (h ? h + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss2).padStart(2, '0'); };
+function lecState(id) { const r = account.prog[id]; if (!r || !r.enrolled) return { k: 'none', label: '수강신청 전' }; if (r.done) return { k: 'done', label: '수료' }; const p = account.pct(id); return { k: 'ing', label: p ? `수강 중 ${p}%` : '수강 신청됨', p }; }
+// 로그인 / 회원가입
+let loginNext = null, lgMode = 'login';
+function openLogin(next, why) {
+  loginNext = next || null; $('#lg-why').textContent = why || '수강신청·진도·수료가 계정에 저장됩니다.'; $('#lg-why').hidden = !!account.user && !why;
+  $('#lg-note').textContent = account.server ? '비밀번호는 서버에 암호화(scrypt)해 보관합니다.' : '시연 버전: 비밀번호는 원문을 저장하지 않고 암호화(PBKDF2) 값만 보관합니다. 다른 사이트와 같은 비밀번호는 쓰지 마세요.';
+  const me = account.user; $('#lg-form').hidden = !!me; $('#lg-me').hidden = !me; document.querySelector('#modal-login .rv-tabs').hidden = !!me;
+  $('#lg-title').textContent = me ? '내 계정' : lgMode === 'signup' ? '회원가입' : '로그인';
+  if (me) $('#lg-me-name').textContent = `${me.name} (${me.id})`;
+  $('#lg-err').textContent = ''; openModal('login'); if (!me) setTimeout(() => $('#lg-id').focus(), 30);
+}
+function setLgMode(mode) { lgMode = mode; document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.classList.toggle('on', t.dataset.lg === mode)); $('#lg-pw2').hidden = $('#lg-name').hidden = mode !== 'signup'; $('#lg-go').textContent = mode === 'signup' ? '가입하고 시작하기' : '로그인'; $('#lg-title').textContent = mode === 'signup' ? '회원가입' : '로그인'; $('#lg-pw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password'; $('#lg-err').textContent = ''; }
+async function submitLogin() {
+  const id = $('#lg-id').value, pw = $('#lg-pw').value; $('#lg-err').textContent = '';
+  if (lgMode === 'signup') { if (pw !== $('#lg-pw2').value) { $('#lg-err').textContent = '비밀번호 확인이 맞지 않아요.'; return; } const nm = $('#lg-name').value.trim(); if (nm) { const [ok, er] = validName(nm); if (!ok) { $('#lg-err').textContent = er; return; } } }
+  $('#lg-go').disabled = true; $('#lg-go').textContent = '확인 중…';
+  let r; try { r = await withTimeout(lgMode === 'signup' ? account.signup(id, pw, $('#lg-name').value) : account.login(id, pw), 20000); } catch (e) { r = { ok: false, msg: '연결이 늦어요. 잠시 후 다시 시도해 주세요.' }; }
+  $('#lg-go').disabled = false; setLgMode(lgMode);
+  if (!r.ok) { $('#lg-err').textContent = r.msg; return; }
+  $('#lg-pw').value = $('#lg-pw2').value = ''; closeModal('login'); syncAcctUI(); toast(`${account.user.name}님, 반가워요!`);
+  const f = loginNext; loginNext = null; if (f) f();
+}
+function syncAcctUI() { const u = account.user; $('#acct-lbl').textContent = u ? u.name + '님' : '로그인'; $('#acct-pill').classList.toggle('on', !!u); }
+function openLectures(cat, mine) {
+  const rl = app.roomLec; const now = rl && lecById(rl.id);
+  $('#lc-now').hidden = !now;
+  if (now) { $('#lc-now-t').textContent = `지금 이 방: 「${now.t}」 (${rl.by || '누군가'}님이 틀었어요)`; $('#lc-join').onclick = () => { closeModal('lectures'); playLecture(rl.id, Math.max(0, (Date.now() - rl.at) / 1000), true); }; }
+  const cats = LECTURE_CATS.filter(c => LECTURES.some(l => l.cat === c)).concat([...new Set(LECTURES.map(l => l.cat))].filter(c => !LECTURE_CATS.includes(c)));
+  const doneN = LECTURES.filter(l => account.prog[l.id]?.done).length, enN = LECTURES.filter(l => account.prog[l.id]?.enrolled).length;
+  $('#lc-title').textContent = mine ? '내 강의' : '강의 목록';
+  const cur = mine ? '내 강의' : (cat || '전체');
+  $('#lc-tabs').innerHTML = ['내 강의', '전체', ...cats].map(c => `<button class="lc-tab${cur === c ? ' on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('') + `<span class="lc-done">${account.user ? `${esc(account.user.name)}님 · 신청 ${enN} · 수료 ${doneN}/${LECTURES.length}` : '로그인하면 진도가 저장돼요'}</span>`;
+  document.querySelectorAll('#lc-tabs .lc-tab').forEach(b => b.onclick = () => b.dataset.c === '내 강의' ? openLectures(null, true) : openLectures(b.dataset.c === '전체' ? null : b.dataset.c));
+  const list = LECTURES.filter(l => mine ? account.prog[l.id]?.enrolled : (!cat || l.cat === cat));
+  const cont = LECTURES.filter(l => account.prog[l.id]?.enrolled && !account.prog[l.id]?.done).sort((a, b) => (account.prog[b.id].last || account.prog[b.id].enrolled) - (account.prog[a.id].last || account.prog[a.id].enrolled))[0];
+  const contHtml = mine && cont ? `<div class="lc-cont"><span><em>이어서 듣기</em><b>${esc(cont.t)}</b><small>진도 ${account.pct(cont.id)}% · ${fmtT(account.prog[cont.id].pos)}부터</small></span><button class="btn primary" id="lc-cont-go">${account.prog[cont.id].pos > 5 ? '이어보기' : '수업보기'}</button></div>` : '';
+  $('#lc-detail').hidden = true; $('#lc-list').hidden = false;
+  $('#lc-list').innerHTML = contHtml + (list.length ? `<div class="lc-grid">${list.map(l => { const s = lecState(l.id); const r = account.prog[l.id] || {}; return `<button class="lc-item" data-id="${l.id}"><span class="lc-thumb"><img src="https://i.ytimg.com/vi/${l.id}/mqdefault.jpg" alt="" loading="lazy">${s.k === 'done' ? '<i class="lc-badge">수료</i>' : r.pos ? `<i class="lc-badge go">${fmtT(r.pos)}부터 이어보기</i>` : ''}</span><span><em>${esc(l.cat)}</em><b>${esc(l.t)}</b><small>${esc(l.by)} · ${esc(l.len)}</small><small class="lc-who">대상 ${esc(l.who || '')} · ${esc(l.learn || '')}</small><i class="lc-status ${s.k}">${s.label}</i>${s.k !== 'none' ? `<span class="lc-bar${s.k === 'done' ? ' done' : ''}"><i style="width:${s.k === 'done' ? 100 : account.pct(l.id)}%"></i></span>` : ''}</span></button>`; }).join('')}</div>` : '<p class="small muted">아직 신청한 강의가 없어요. 전체 목록에서 강의를 골라 수강신청해 보세요.</p>');
+  if ($('#lc-cont-go')) $('#lc-cont-go').onclick = () => { closeModal('lectures'); const r = account.prog[cont.id]; playLecture(cont.id, r.pos > 5 ? r.pos : 0, false); };
+  document.querySelectorAll('#lc-list .lc-item').forEach(el => el.onclick = () => openLectureDetail(el.dataset.id));
+  if (!openModals.has('lectures')) openModal('lectures');
+}
+async function openLectureDetail(id) {
+  const l = lecById(id); if (!l) return; const r = account.prog[id] || {}; const s = lecState(id);
+  $('#lc-list').hidden = true; $('#lc-detail').hidden = false; $('#lc-title').textContent = l.t;
+  const d = $('#lc-detail'); const pct = account.pct(id);
+  const btns = !account.user ? '<button class="btn primary" id="lc-login">로그인하고 수강신청</button>'
+    : !r.enrolled ? '<button class="btn primary" id="lc-enroll">수강신청</button>'
+    : `<button class="btn primary" id="lc-play">${r.pos > 5 && !r.done ? `이어보기 ${fmtT(r.pos)}` : r.done ? '다시 보기' : '수업보기'}</button>${r.pos > 5 && !r.done ? '<button class="btn" id="lc-play0">처음부터</button>' : ''}${r.done ? '<button class="btn" id="lc-cert">수료증 보기</button>' : ''}`;
+  d.innerHTML = `<button class="lc-back" id="lc-back">← 강의 목록</button>
+    <div class="lc-head"><img src="https://i.ytimg.com/vi/${l.id}/mqdefault.jpg" alt=""><div><em>${esc(l.cat)}</em><h3>${esc(l.t)}</h3><p class="small muted">${esc(l.by)} · ${esc(l.len)}</p><p class="small"><b>대상</b> ${esc(l.who || '')}<br><b>배울 것</b> ${esc(l.learn || '')}</p>
+    ${r.enrolled ? `<p class="small"><i class="lc-status ${s.k}">${s.label}</i> 실제로 본 시간 ${fmtT(account.watched(id))} / ${fmtT(r.dur || lecSec(l.len))} · 수료 기준 90% 시청${r.done ? ` · 수료일 ${new Date(r.done).toLocaleDateString('ko-KR')}` : ''}</p><span class="lc-bar${r.done ? ' done' : ''}"><i style="width:${r.done ? 100 : pct}%"></i></span>` : ''}
+    <div class="bt-btns">${btns}</div></div></div>
+    <section class="lc-sec"><h4>내 가게 실행 체크리스트</h4><ul class="lc-check">${(l.check || []).map((c, i) => `<li><label><input type="checkbox" data-i="${i}" ${r.ck && r.ck[i] ? 'checked' : ''} ${account.user ? '' : 'disabled'}> ${esc(c)}</label></li>`).join('')}</ul><button class="btn" id="lc-dl">체크리스트 내려받기</button></section>
+    <section class="lc-sec"><h4>내 가게에 적용할 한 가지</h4><textarea id="lc-note" maxlength="200" placeholder="예: 대표 메뉴 원가부터 다시 계산해 보기" ${account.user ? '' : 'disabled'}>${esc(r.note || '')}</textarea><p class="tiny muted">내 계정에 저장돼요.</p></section>
+    <section class="lc-sec"><h4>질문 게시판</h4><div id="lc-qa" class="lc-qa"><p class="small muted">질문을 불러오는 중…</p></div>
+    <div class="lc-ask"><input id="lc-q" maxlength="200" placeholder="강의를 듣고 궁금한 점을 남겨 주세요"><label class="small"><input type="checkbox" id="lc-q-at"> 마지막으로 본 시점 붙이기</label><button class="btn primary" id="lc-q-send">질문 올리기</button></div>
+    <p class="tiny muted">질문은 같은 마을 사람 모두에게 보여요. 이름은 첫 글자만 표시돼요. 연락처·개인정보는 쓰지 마세요.</p></section>`;
+  $('#lc-back').onclick = () => openLectures();
+  if ($('#lc-login')) $('#lc-login').onclick = () => { closeModal('lectures'); openLogin(() => openLectureDetail(id) || openModal('lectures')); };
+  if ($('#lc-enroll')) $('#lc-enroll').onclick = () => { account.enroll(id); toast(`「${l.t}」 수강신청 완료! 수업보기를 누르면 시작해요.`); openLectureDetail(id); };
+  if ($('#lc-play')) $('#lc-play').onclick = () => { closeModal('lectures'); playLecture(id, r.done ? 0 : (r.pos > 5 ? r.pos : 0), false); };
+  if ($('#lc-play0')) $('#lc-play0').onclick = () => { closeModal('lectures'); playLecture(id, 0, false); };
+  if ($('#lc-cert')) $('#lc-cert').onclick = () => showCert(id);
+  d.querySelectorAll('.lc-check input').forEach(cb => cb.onchange = () => { const R2 = account.rec(id); R2.ck = R2.ck || {}; R2.ck[cb.dataset.i] = cb.checked; account.save(); });
+  $('#lc-note').oninput = e => { const R2 = account.rec(id); R2.note = e.target.value; account.save(); };
+  $('#lc-dl').onclick = () => { const P = account.prog[id] || {}; const txt = `[${SPACES.lecture?.name || '강의실'}] ${l.t}\n${l.by} · ${l.len}\nhttps://youtu.be/${l.id}\n진도 ${account.pct(id)}%${P.done ? ' · 수료' : ''}\n\n내 가게 실행 체크리스트\n${(l.check || []).map((c, i) => `${P.ck && P.ck[i] ? '[v]' : '[ ]'} ${c}`).join('\n')}\n\n내 가게에 적용할 한 가지\n${P.note || ''}\n`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })); a.download = `체크리스트_${l.t.replace(/[\\/:*?"<>|]/g, '')}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+  const renderQA = async () => {
+    let list = []; try { list = await withTimeout(net.boardList('lec-' + id), 8000); } catch (e) { $('#lc-qa').innerHTML = '<p class="small muted">질문을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>'; return; }
+    $('#lc-qa').innerHTML = list.length ? list.slice(-30).reverse().map(q => `<div class="lc-qi"><b>${esc(q.nm || '손님')}</b>${q.at ? `<span class="lc-at">${fmtT(q.at)}</span>` : ''}<p>${esc(q.text)}</p></div>`).join('') : '<p class="small muted">아직 질문이 없어요. 첫 질문을 남겨 보세요.</p>';
+  };
+  renderQA();
+  $('#lc-q-send').onclick = async () => {
+    if (!account.user) { toast('로그인한 회원만 질문을 올릴 수 있어요.'); return; }
+    const t = $('#lc-q').value.trim(); if (t.length < 2) { toast('질문을 2자 이상 적어 주세요.'); return; }
+    if (BANNED.some(b => t.toLowerCase().includes(b)) || /\d{2,3}-?\d{3,4}-?\d{4}/.test(t)) { toast('쓸 수 없는 말이나 연락처가 들어 있어요.'); return; }
+    const at = $('#lc-q-at').checked ? Math.floor((account.prog[id] || {}).pos || 0) : 0;
+    const nm = (account.user.name.trim()[0] || '회') + '○○';
+    try { await net.boardPost('lec-' + id, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: t, nm, at }); $('#lc-q').value = ''; toast('질문을 올렸어요.'); setTimeout(renderQA, 800); } catch (e) { toast('질문을 올리지 못했어요. 다시 시도해 주세요.'); }
+  };
+}
+// 수업 영상: 유튜브 플레이어 API로 실제 재생 구간을 기록 (건너뛰기로는 수료 안 됨)
+let ytPlayer = null, ytTimer = 0;
+function stopLecturePlayer() { clearInterval(ytTimer); ytTimer = 0; if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; } account.save(true); $('#vd-prog').hidden = true; }
+async function openLectureVideo(id, start) {
+  const l = lecById(id) || { t: '강의' };
+  $('#vd-title').textContent = `강의 · ${l.t}`; $('#vd-empty').hidden = true; const frame = $('#vd-frame'); frame.src = 'about:blank'; frame.hidden = true;
+  let host = $('#vd-player'); if (!host) { host = document.createElement('div'); host.id = 'vd-player'; frame.parentNode.appendChild(host); }
+  const bar = $('#vd-prog'); const upd = () => { const r = account.prog[id] || {}; bar.hidden = false; bar.className = 'vd-prog' + (r.done ? ' done' : ''); bar.textContent = r.done ? '수료 완료' : `진도 ${account.pct(id)}% · 수료 90%`; };
+  upd(); sound.duck(true); openModal('video');
+  const YT = await loadYT(); stopLecturePlayer(); upd();
+  let prev = null;
+  ytPlayer = new YT.Player('vd-player', { videoId: id, host: 'https://www.youtube-nocookie.com', playerVars: { autoplay: 1, start: Math.floor(start || 0), rel: 0, playsinline: 1, modestbranding: 1 },
+    events: { onStateChange: e => { if (e.data !== 1) prev = null; if (e.data === 0) { const t = ytPlayer.getDuration(); if (prev !== null) account.addSeen(id, prev, t, t); upd(); } } } });
+  ytTimer = setInterval(() => {
+    if (!ytPlayer || !ytPlayer.getPlayerState) return; let st, t, dur; try { st = ytPlayer.getPlayerState(); t = ytPlayer.getCurrentTime(); dur = ytPlayer.getDuration(); } catch (e) { return; }
+    if (st !== 1) { prev = null; return; }
+    if (prev !== null && t - prev > 0 && t - prev <= 2.5) { const res = account.addSeen(id, prev, t, dur); upd(); if (res === 'done') { toast(`축하해요! 「${l.t}」 수료!`); setTimeout(() => showCert(id), 600); } }
+    else if (prev === null || Math.abs(t - prev) > 2.5) { const r = account.rec(id); r.pos = Math.round(t); account.save(); }
+    prev = t;
+  }, 1000);
+}
+// 수료증 (이름 · 강의명 · 수료일)
+function showCert(id) {
+  const l = lecById(id); const r = account.prog[id]; if (!l || !r || !r.done || !account.user) return;
+  if (SPACE_ORDER.join() === 'lecture') { // 점주 아카데미: GPT 수료증 디자인(플럼 이중 테두리·살구 포인트) 위에 이름·강의명·수료일을 채움
+    const bg = new Image(); bg.onload = () => {
+      const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height; const g = c.getContext('2d'); g.drawImage(bg, 0, 0); const k = c.width / 880;
+      g.fillStyle = '#F7F3EC'; g.fillRect(170 * k, 413 * k, 550 * k, 72 * k);
+      g.textAlign = 'center'; g.fillStyle = '#34343A'; g.font = `500 ${Math.round(19 * k)}px "Noto Sans KR", sans-serif`;
+      g.fillText(`위 사람은 ${BRAND.ko}의 교육과정을 성실히 이수하였기에`, 440 * k, 440 * k); g.fillText('이 증서를 수여합니다.', 440 * k, 470 * k);
+      g.textAlign = 'left'; g.fillStyle = '#49334F';
+      const fit = (t, max, size) => { let s = size; g.font = `700 ${Math.round(s * k)}px "Noto Sans KR", sans-serif`; while (g.measureText(t).width > max * k && s > 12) { s -= 1; g.font = `700 ${Math.round(s * k)}px "Noto Sans KR", sans-serif`; } };
+      fit(account.user.name, 420, 26); g.fillText(account.user.name, 282 * k, 248 * k);
+      fit(l.t, 420, 21); g.fillText(l.t, 282 * k, 310 * k);
+      fit('x', 420, 21); g.fillText(new Date(r.done).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + `  ·  실제 시청 ${account.pct(id)}%`, 282 * k, 372 * k);
+      const fin = () => { const url = c.toDataURL('image/png'); $('#ct-img').src = url; $('#ct-dl').href = url; $('#ct-dl').download = `수료증_${account.user.name}_${l.t.replace(/[\\/:*?"<>|]/g, '')}.png`; openModal('cert'); };
+      const lg = new Image(); lg.onload = () => { const w = 180 * k, h = w * lg.height / lg.width; g.drawImage(lg, 40 * k, 34 * k, w, h); fin(); }; lg.onerror = fin; lg.src = BRAND.logo;
+    };
+    bg.src = 'assets/tex/academy_cert.webp'; return;
+  }
+  const c = document.createElement('canvas'); c.width = 1400; c.height = 990; const g = c.getContext('2d');
+  g.fillStyle = '#fbf8f1'; g.fillRect(0, 0, 1400, 990); g.strokeStyle = '#0E1F4D'; g.lineWidth = 18; g.strokeRect(40, 40, 1320, 910); g.strokeStyle = '#E8843C'; g.lineWidth = 4; g.strokeRect(78, 78, 1244, 834);
+  g.textAlign = 'center'; g.fillStyle = '#0E1F4D'; g.font = '900 96px "Noto Sans KR", serif'; g.fillText('수 료 증', 700, 230);
+  g.font = '600 34px "Noto Sans KR", sans-serif'; g.fillStyle = '#4a5677'; g.fillText(SPACES.lecture?.name || '강의실', 700, 300);
+  g.fillStyle = '#222'; g.font = '800 64px "Noto Sans KR", sans-serif'; g.fillText(account.user.name, 700, 430);
+  g.font = '500 36px "Noto Sans KR", sans-serif'; g.fillText('위 사람은 아래 강의를 끝까지 수강하였기에', 700, 520); g.fillText('이 증서를 드립니다.', 700, 570);
+  g.fillStyle = '#b85a14'; g.font = '800 44px "Noto Sans KR", sans-serif'; g.fillText(`「${l.t}」`, 700, 670);
+  g.fillStyle = '#555'; g.font = '500 28px "Noto Sans KR", sans-serif'; g.fillText(`${l.by} · ${l.len} · 실제 시청 ${account.pct(id)}%`, 700, 720);
+  g.fillText(new Date(r.done).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }), 700, 800);
+  g.fillStyle = '#0E1F4D'; g.font = '800 40px "Noto Sans KR", sans-serif'; g.fillText(BRAND.ko, 700, 870);
+  const draw = () => { const url = c.toDataURL('image/png'); $('#ct-img').src = url; $('#ct-dl').href = url; $('#ct-dl').download = `수료증_${account.user.name}_${l.t.replace(/[\\/:*?"<>|]/g, '')}.png`; openModal('cert'); };
+  const im = new Image(); im.onload = () => { const w = 260, h = w * im.height / im.width; g.drawImage(im, 1400 - 120 - w, 110, w, h); draw(); }; im.onerror = draw; im.src = BRAND.logo;
+}
+function playLecture(id, start, joined) {
+  const l = lecById(id) || { t: '강의' };
+  if (!account.user) { openLogin(() => playLecture(id, start, joined), '수업을 보려면 로그인이 필요해요.'); return; }
+  if (!account.isEnrolled(id)) { account.enroll(id); toast(`「${l.t}」 수강신청이 됐어요.`); }
+  if (!joined && app.me && app.space === 'lecture') { app.me.lec = { id, at: Date.now() - (start || 0) * 1000 }; app.roomLec = { id, at: app.me.lec.at, by: app.me.name, sid: SID }; publish(); }
+  if (app.world?.props?.screen && app.space === 'lecture') setScreenTitle(l.t);
+  openLectureVideo(id, start);
+}
+function setScreenTitle(t) { const sc = app.world?.props?.screen; if (sc && sc.userData.setTitle) sc.userData.setTitle(t); }
+function onPeerLecture(sid, st) {
+  if (app.space !== 'lecture' || !st || !st.lec || !st.lec.id || Date.now() - st.lec.at > 4 * 3600e3) return;
+  const cur = app.roomLec; if (cur && cur.at >= st.lec.at) return;
+  app.roomLec = { id: st.lec.id, at: st.lec.at, by: st.name || '손님', sid };
+  const l = lecById(st.lec.id); if (!l) return; setScreenTitle(l.t);
+  const bn = $('#lec-banner'); $('#lec-banner-t').textContent = `${st.name || '손님'}님이 「${l.t}」 강의를 틀었어요`; bn.hidden = false;
+  $('#lec-banner-go').onclick = () => { bn.hidden = true; playLecture(st.lec.id, Math.max(0, (Date.now() - st.lec.at) / 1000), true); };
+  $('#lec-banner-x').onclick = () => { bn.hidden = true; };
+  clearTimeout(bn._t); bn._t = setTimeout(() => { bn.hidden = true; }, 15000); renderActions();
+}
 function openBibleModal() { openModal('bible'); openBible().catch(e => { console.error(e); $('#bb-out').innerHTML = '<p class="muted">말씀을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>'; }); if (app.me) { app.me.char.setUpper('read'); app.me.act = app.me.seat >= 0 ? 'sit' : 'stand'; } }
 function openHymns() {
   const list = $('#hymn-list'); list.innerHTML = '';
@@ -702,6 +884,7 @@ function onPeer(sid, st) {
     labels.add(sid, st.name || '손님'); labels.bind(sid, ch.root, 1.72);
     app.peers.set(sid, p);
   }
+  onPeerLecture(sid, st);
   const newSeq = (st.seq || 0) !== p.seq; p.seq = st.seq || 0;
   labels.setText(sid, st.name || '손님');
   if (st.look && st.look.outfit && st.look.outfit !== p.look.outfit) { p.char.rebuild(st.look); labels.bind(sid, p.char.root, 1.72); }
@@ -738,7 +921,7 @@ function updatePeopleCount() { $('#people-n').textContent = String(1 + app.peers
 function spawnNpcs() {
   app.npcs.forEach(n => { n.char.dispose(); labels.remove(n.id); }); app.npcs = [];
   if (!settings.npc || !app.world) return;
-  const key = app.space; const want = { temple: 7, church: 5, cathedral: 5, playground: 6, foodstreet: 8, arcade: 3 }[key] || 0;
+  const key = app.space; const want = { temple: 7, church: 5, cathedral: 5, playground: 6, foodstreet: 8, arcade: 3, lecture: 6 }[key] || 0;
   const free = app.world.seats.filter(s => s.zone !== 'rest' || key === 'playground');
   const used = new Set();
   for (let i = 0; i < want; i++) {
@@ -905,7 +1088,7 @@ function openModal(k) { const m = $('#modal-' + k); if (!m) return; m.hidden = f
 function closeModal(k) {
   const m = $('#modal-' + k); if (!m) return; m.hidden = true; openModals.delete(k);
   if (k === 'program') { $('#prog-frame').src = 'about:blank'; endMachine(); }
-  if (k === 'video') { $('#vd-frame').src = 'about:blank'; }
+  if (k === 'video') { $('#vd-frame').src = 'about:blank'; stopLecturePlayer(); const vp = $('#vd-player'); if (vp) vp.remove(); $('#vd-frame').hidden = false; sound.duck(false); }
   if (k === 'gacha') endMachine();
   if (k === 'sound') syncSoundUI();
   if (k === 'bible' && app.me) { app.me.char.setUpper(null); }
@@ -925,6 +1108,7 @@ function showHintOnce(key) {
     cathedral: '장의자에 앉아 기도하거나, 오른쪽 앞 봉헌초에서 촛불을 켜세요. 왼쪽 옆에 카페가 있어요.',
     playground: '기계를 누르면 걸어가서 프로그램이 열려요. 12지신 마당에서 내 띠를 눌러 보고, 랜덤박스로 소품도 뽑아 보세요.',
     foodstreet: `${STREET.name}에 오신 걸 환영해요! 실제 매대 명단 그대로 부스 20곳이 있어요. 부스를 누르면 메뉴·가격을 보고, 가운데 무대 스크린을 누르면 공연 영상이 나와요.`,
+    lecture: '빈 의자를 누르면 앉아요. 강의 목록에서 강의를 고르면 앞 대형 스크린과 함께 재생되고, 같은 방 사람들에게 "함께 듣기" 안내가 가요.',
     arcade: '게임·운세 기계를 누르면 걸어가서 바로 플레이해요. 인형뽑기에선 머리 소품을 뽑을 수 있고, 미러포토 부스도 있어요.',
   }[key];
   $('#hint-text').textContent = txt; $('#hint').hidden = false;
@@ -997,4 +1181,4 @@ function loop() {
 
 boot();
 // 검수용 훅 (실시간 검증 스크립트에서 사용)
-window.__mdlTest = { trySit, tryCandle, doAction, net, seatOwner, enterSpace, leaveToMap, tap: (x, y) => handleTap(x, y), pickAt: (x, y) => pick(x, y, [...app.world.clickables, app.world.floorHit || []].flat()).slice(0, 4).map(h => { let o = h.object, k = []; while (o) { k.push(Object.keys(o.userData).join(',')); o = o.parent; } return k.join(' < '); }), get peers() { return [...app.peers.keys()]; } };
+window.__mdlTest = { acct: account, showCert, openLectureDetail, trySit, tryCandle, doAction, net, seatOwner, enterSpace, leaveToMap, tap: (x, y) => handleTap(x, y), pickAt: (x, y) => pick(x, y, [...app.world.clickables, app.world.floorHit || []].flat()).slice(0, 4).map(h => { let o = h.object, k = []; while (o) { k.push(Object.keys(o.userData).join(',')); o = o.parent; } return k.join(' < '); }), get peers() { return [...app.peers.keys()]; } };

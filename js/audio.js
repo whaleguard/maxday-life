@@ -126,6 +126,7 @@ export class SoundScape {
     else if (key === 'cafe') { this._room(0.06); this._songLoop(['silentNight', 'hymnToJoy', 'firstNoel'], 'celesta'); }
     else if (key === 'street') { this._wind(0.05); this._room(0.08); this._musicBox(); }
     else if (key === 'arcade') { this._room(0.05); this._musicBox(); }
+    else if (key === 'lecture') { this._room(0.035); }
     else if (key === 'garden') { this._wind(0.07); this._birds(); }
   }
 

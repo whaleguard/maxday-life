@@ -3,7 +3,7 @@
 
 // 브랜드: 거래처별 페이지에서 window.MDL_BRAND 로 이름·로고·실시간 공간(ns)을 바꿔 같은 공간을 재사용
 const _B = (typeof window !== 'undefined' && window.MDL_BRAND) || {};
-export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간', videos: _B.videos || {}, cinema: !!_B.cinema };
+export const BRAND = { ko: _B.ko || '맥스데이 라이프', en: _B.en || 'MAX DAY LIFE', short: _B.short || '맥스데이', logo: _B.logo || 'assets/logo.png', title: _B.title || '온라인 기도공간', videos: _B.videos || {}, cinema: !!_B.cinema, drivein: _B.drivein !== false, sister: _B.sister || null };
 const S = BRAND.short;
 
 export const COLORS = { base: '#15272B', panel: '#F4F0E7', accent: '#C9AE73', ink: '#233335' };
@@ -324,6 +324,36 @@ export const ARCADE = {
   ],
   photo: { x: 7.4, z: 5.4, url: 'https://mirrorphoto.kr/' },
 };
+
+// v4 — 강의실: 입장해서 강의 영상 듣기 (같은 방 사람과 함께 듣기)
+// 강의는 유튜브 공식·공개 강의를 퍼가기로 재생. 거래처별로 window.MDL_BRAND.lectures 로 교체
+export const LECTURE_CATS = ['매출 올리기', '가게 홍보', '창업 기초', '매장 운영'];
+export const LECTURES = _B.lectures || [
+  { id: 'pvijV5bguUo', t: '음식점 메뉴가격 결정 법칙 7가지', by: '김영갑교수TV', len: '26:15', cat: '매출 올리기', who: '음식점·먹거리부스 운영자', learn: '메뉴 가격을 정하는 기준을 배워요',
+    check: ['대표 메뉴 3개의 재료비(원가) 계산하기', '메뉴별 원가율 확인하고 목표 원가율 정하기', '주변 가게 같은 메뉴 가격 3곳 조사하기', '세트·추가 메뉴로 객단가 올릴 방법 1가지 정하기'] },
+  { id: 'eDzpZT9EeiA', t: '온라인 시장의 이해', by: '소상공인시장진흥공단 · 소상공인지식배움터', len: '4:36:46', cat: '매출 올리기', who: '온라인 판매를 시작하려는 상인', learn: '온라인 시장 구조와 판로를 이해해요',
+    check: ['온라인으로 팔 수 있는 우리 가게 상품 3가지 적기', '시작할 판매 채널 1곳 정하기 (스마트스토어·배달앱 등)', '포장·택배 비용 확인하기'] },
+  { id: 'YmAhvP7F3ew', t: '네이버 플레이스 · 소상공인 광고 총정리', by: '깡대표', len: '12:56', cat: '가게 홍보', who: '네이버 지도에 가게가 올라간 사장님', learn: '플레이스 정보 관리와 광고 세팅을 알아봐요',
+    check: ['플레이스 영업시간·메뉴·가격을 최신으로 고치기', '대표 사진 5장 이상 올리기', '최근 리뷰에 답글 달기', '용마미식거리 행사(금·토 17~22시) 소식을 새소식에 올리기'] },
+  { id: 'r8Fwv4rC5Jw', t: '팔로워 늘리는 인스타그램 마케팅 전략', by: '공부하는 사장 · 공사장TV', len: '34:36', cat: '가게 홍보', who: 'SNS로 손님을 모으고 싶은 가게', learn: '인스타그램 계정 운영 전략을 배워요',
+    check: ['가게 계정 프로필·위치·영업시간 정리', '대표 메뉴 사진 9장 올리기', '#강릉맛집 #용마미식거리 #포남동맛집 해시태그 넣기', '주 2회 올릴 요일 정하기'] },
+  { id: 'V_zYq8pYUXg', t: '창업하기 전 먼저 알아둘 법규', by: '공부하는 사장 · 공사장TV', len: '21:23', cat: '창업 기초', who: '창업을 준비 중인 분', learn: '창업 전에 확인할 법규·신고를 짚어봐요',
+    check: ['사업자등록·영업신고가 필요한지 확인하기', '위생교육 등 필수 교육·서류 확인하기', '간판·옥외광고물 신고 대상인지 확인하기'] },
+  { id: 'C1LJHM5XFeY', t: '돈 만드는 식당 메뉴 1강 · 메뉴개발 전략', by: '음식연주TV', len: '7:12', cat: '매장 운영', who: '메뉴를 새로 짜거나 바꾸려는 점주', learn: '잘 팔리는 메뉴를 만드는 기준을 알아봐요',
+    check: ['지금 메뉴 중 잘 팔리는 것·안 팔리는 것 3개씩 적기', '대표 메뉴 1개를 정하고 사진·설명 다시 쓰기', '안 팔리는 메뉴 정리 여부 정하기'] },
+  { id: 'h4Jd6aBrXuA', t: '네이버 지역소상공인 광고 등록하는 법', by: '자립마케팅 (소상공인 마케팅팀)', len: '20:43', cat: '가게 홍보', who: '광고를 처음 해보는 점주', learn: '지역 광고를 직접 등록하는 순서를 따라 해요',
+    check: ['광고 예산(하루·한 달) 정하기', '광고에 쓸 대표 사진·문구 준비하기', '1주일 뒤 노출·클릭 수 확인하기'] },
+];
+if (EXTRA.includes('lecture')) {
+  SPACES.lecture = {
+    key: 'lecture', name: _B.lectureName || S + ' 강의실', desc: '강의 듣기 · 함께 보기', btn: '강의실 가기', short: '강의실',
+    room: { w: 18, d: 18, h: 5.2 }, floor: '#BE9870', wall: _B.only && _B.only.join() === 'lecture' ? '#F7F2E9' : '#F3EFE6', ceil: '#E8E2D6',
+    sun: ['#FFF4E0', 2.0], amb: ['#E6E2DA', 0.95], spawn: [0, 0, 8],
+    seatType: 'none', actions: [], outfit: 'casual', music: 'lecture',
+  };
+  if (!SPACE_ORDER.includes('lecture')) SPACE_ORDER.push('lecture');
+  BUTTON_STYLE.lecture = { bg: '#DDEBE6', fg: '#1F4A3F', bd: '#7FB0A0', hv: '#CBE0D8' };
+}
 
 // 거래처별 공간 선택: window.MDL_BRAND.only = ['foodstreet', 'playground', ...] (이 순서로 버튼·지도 구성)
 if (Array.isArray(_B.only) && _B.only.length) { const keep = _B.only.filter(k => SPACES[k]); SPACE_ORDER.splice(0, SPACE_ORDER.length, ...keep); }

@@ -87,6 +87,9 @@ export class MqttAdapter extends Emitter {
   // 방 목록: 공간의 모든 방 접속 인원 (retained 현재 상태 기준)
   async resvList(store, date) { if (!this.ws || this.ws.readyState !== 1) await this._open(); const r = await this._req({ type: 'resvList', store, date }); return r.list || {}; }
   async resvSave(rec) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'resvSave', rec }); }
+  async boardList(key) { if (!this.ws || this.ws.readyState !== 1) await this._open(); const r = await this._req({ type: 'boardList', key }); return r.list || []; }
+  async acct(op, data) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'acct', op, ...data }); }
+  async boardPost(key, item) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'boardPost', key, item }); }
   async resvCancel(rec) { if (!this.ws || this.ws.readyState !== 1) await this._open(); return this._req({ type: 'resvCancel', rec: { ...rec, sid: this.sid } }); }
   async peekRooms(space) {
     if (!this.client || !this.connected) await this._connect();
@@ -106,6 +109,40 @@ export class MqttAdapter extends Emitter {
     return counts;
   }
 
+  /* ---- 키-값 저장 (계정·수강 기록 데모용, retained) ---- */
+  async kvGet(key) {
+    if (!this.client || !this.connected) await this._connect();
+    const topic = `${MQTT_NS}/kv/${key}`;
+    return new Promise(res => {
+      let done = false; const fin = v => { if (done) return; done = true; this.client.removeListener('message', h); try { this.client.unsubscribe(topic); } catch (e) {} res(v); };
+      const h = (t, buf) => { if (t !== topic) return; const s = buf.toString(); if (!s) return fin(null); try { fin(JSON.parse(s)); } catch (e) { fin(null); } };
+      this.client.on('message', h); this.client.subscribe(topic, () => setTimeout(() => fin(null), 1500));
+    });
+  }
+  async kvPut(key, val) {
+    if (!this.client || !this.connected) await this._connect();
+    await new Promise(r => this.client.publish(`${MQTT_NS}/kv/${key}`, JSON.stringify(val), { retain: true, qos: 1 }, () => r()));
+    return { ok: true };
+  }
+  async acct(op, data) { return { ok: false, local: true }; } // MQTT 모드: 계정 판정은 account.js 가 직접(데모)
+  /* ---- 게시판 (강의 질문 등, retained = 공유 저장) ---- */
+  async boardList(key) {
+    if (!this.client || !this.connected) await this._connect();
+    const pre = `${MQTT_NS}/board/${key}/`; const pat = pre + '+'; const out = {};
+    const handler = (topic, buf) => { if (!topic.startsWith(pre)) return; const id = topic.slice(pre.length); const s = buf.toString(); if (!s) { delete out[id]; return; } try { out[id] = JSON.parse(s); } catch (e) {} };
+    this.client.on('message', handler);
+    await new Promise(r => this.client.subscribe(pat, () => r()));
+    await new Promise(r => setTimeout(r, 1300));
+    this.client.removeListener('message', handler);
+    try { this.client.unsubscribe(pat); } catch (e) {}
+    return Object.values(out).sort((a, b) => a.t - b.t);
+  }
+  async boardPost(key, item) {
+    if (!this.client || !this.connected) await this._connect();
+    const rec = { id: String(item.id).slice(0, 40), text: String(item.text).slice(0, 300), nm: String(item.nm || '').slice(0, 12), at: +item.at || 0, re: item.re || '', likes: +item.likes || 0, t: now() };
+    this.client.publish(`${MQTT_NS}/board/${key}/${rec.id}`, JSON.stringify(rec), { retain: true, qos: 1 });
+    return { ok: true };
+  }
   /* ---- 카페·식당 예약 (retained = 공유 저장) ---- */
   async resvList(store, date) {
     if (!this.client || !this.connected) await this._connect();
