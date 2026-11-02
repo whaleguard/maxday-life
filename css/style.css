@@ -407,3 +407,4 @@ a.pill{text-decoration:none}
 .lc-item .lc-ph i,.lc-item .lc-ph em{padding:0}.lc-item .lc-ph em{display:block;padding:2px 8px;color:#34343A;margin:0}
 .lc-item .lc-bar{display:block;padding:0}
 .org-foot{font-size:11px;line-height:1.6;color:#7a7480;border-top:1px solid #e6dfd3;margin:12px 0 0;padding-top:8px}.org-foot b{color:var(--lc,#49334F);margin-right:4px}
+.lg-form select{height:44px;border:1px solid #d8cdb8;border-radius:10px;padding:0 36px 0 12px;font:inherit;background:#fff url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%2349334F%27 stroke-width=%271.6%27/%3E%3C/svg%3E") no-repeat right 14px center;appearance:none;-webkit-appearance:none;color:inherit;max-width:100%}
