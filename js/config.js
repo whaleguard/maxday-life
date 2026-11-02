@@ -329,12 +329,14 @@ export const ARCADE = {
 // 강의는 유튜브 공식·공개 강의를 퍼가기로 재생. 거래처별로 window.MDL_BRAND.lectures 로 교체
 export const LECTURE_CATS = ['매출 올리기', '가게 홍보', '창업 기초', '매장 운영'];
 // 용마 점주 아카데미: 세일즈 매니저 30강 (원본 MYBOX → 유튜브 '일부 공개'로 올린 뒤 yt 칸에 영상 ID를 채움. 비어 있으면 '영상 준비 중')
-const SALES30_YT = {}; // 예: { s01: 'abcdEFGhijk', ... }
-const SALES30_T = {};  // 실제 제목 (영상 첫 화면 기준) — 확인되는 대로 채움
+const SALES30_YT = { s01: 'Ok9JzuAd5fs', s15: 'HpiwGFteIXM' }; // 용마미식거리 유튜브 채널 '일부 공개' 영상 ID
+const SALES30_T = { s01: '영업 전략 수립', s02: '영업 목표', s03: '영업 운영계획', s04: '고객 상담의 성공 요인', s05: '고객 상담 내용' }; // 실제 제목 (영상 첫 화면 기준, GPT 확인분)
+const SALES30_LEN = { s01: '29:53', s02: '29:22', s03: '33:45', s04: '33:46', s05: '32:14', s15: '30:25' };
+const SALES30_C = { s03: '매출 관리', s04: '고객 응대', s05: '고객 응대' };
 const SALES30_CAT = n => n <= 8 ? '영업 기초' : n <= 16 ? '고객 응대' : n <= 23 ? '매출 관리' : '홍보·성장';
 export const LECTURE_SETS = {
   sales30: Array.from({ length: 30 }, (_, i) => { const n = i + 1, id = 's' + String(n).padStart(2, '0');
-    return { id, n, yt: SALES30_YT[id] || '', t: `${n}강 · ${SALES30_T[id] || '세일즈 매니저 과정'}`, by: '세일즈 매니저 과정', len: '', cat: SALES30_CAT(n), who: '용마거리 점주님', learn: SALES30_T[id] ? SALES30_T[id] + '을(를) 배워요' : '판매·응대·매출 관리 실무를 배워요',
+    return { id, n, yt: SALES30_YT[id] || '', t: `${n}강 · ${SALES30_T[id] || '세일즈 매니저 과정'}`, by: '세일즈 매니저 과정', len: SALES30_LEN[id] || '', cat: SALES30_C[id] || SALES30_CAT(n), who: '용마거리 점주님', learn: SALES30_T[id] ? SALES30_T[id] + '을(를) 배워요' : '판매·응대·매출 관리 실무를 배워요',
       check: ['오늘 배운 내용 중 우리 가게에 쓸 것 1가지 적기', '내일 매장에서 바로 해볼 행동 정하기', '1주일 뒤 결과(손님 반응·매출) 적어 보기'] }; }),
 };
 export const LECTURES = _B.lectures || LECTURE_SETS[_B.lectureSet] || [
