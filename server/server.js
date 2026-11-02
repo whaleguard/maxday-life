@@ -17,6 +17,15 @@ const CANDLE_COUNT = 24;
 // 카페·식당 예약 (파일에 저장 — 포스 연동 시 여기서 포스 API 로 전달)
 const RESV_FILE = process.env.RESV_FILE || './reservations.json';
 let resv = {}; try { resv = JSON.parse(fs.readFileSync(RESV_FILE, 'utf8')); } catch (e) {}
+const BOARD_FILE = process.env.BOARD_FILE || './boards.json';
+let boards = {}; try { boards = JSON.parse(fs.readFileSync(BOARD_FILE, 'utf8')); } catch (e) {}
+const saveBoards = () => { try { fs.writeFileSync(BOARD_FILE, JSON.stringify(boards)); } catch (e) { console.error(e); } };
+const ACCT_FILE = process.env.ACCT_FILE || './accounts.json';
+let accts = { users: {}, prog: {} }; try { accts = JSON.parse(fs.readFileSync(ACCT_FILE, 'utf8')); } catch (e) {}
+const saveAccts = () => { try { fs.writeFileSync(ACCT_FILE, JSON.stringify(accts)); } catch (e) { console.error(e); } };
+const tokens = new Map(); // token -> id (서버 메모리 세션)
+const crypto = require('crypto');
+const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
 const saveResv = () => { try { fs.writeFileSync(RESV_FILE, JSON.stringify(resv)); } catch (e) { console.error(e); } };
 const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 
@@ -118,6 +127,30 @@ wss.on('connection', ws => {
         const r = m.rec || {}; const key = `${r.store}/${r.date}`;
         if (resv[key] && resv[key][r.id]) { delete resv[key][r.id]; saveResv(); }
         return reply({ ok: true });
+      }
+      case 'acct': { // 계정 · 수강신청 · 진도 (op: signup | login | me | progGet | progSave)
+        const id = String(m.id || '').toLowerCase();
+        if (m.op === 'signup') {
+          if (!/^[a-z0-9_]{4,16}$/.test(id) || String(m.pw || '').length < 8) return reply({ ok: false, reason: 'bad' });
+          if (accts.users[id]) return reply({ ok: false, reason: 'taken' });
+          const salt = crypto.randomBytes(16).toString('hex'); accts.users[id] = { name: String(m.name || id).slice(0, 12), salt, hash: hashPw(m.pw, salt), at: Date.now() }; saveAccts();
+          const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: accts.users[id].name });
+        }
+        if (m.op === 'login') {
+          const u = accts.users[id]; if (!u || hashPw(m.pw, u.salt) !== u.hash) return reply({ ok: false, reason: 'wrong' });
+          const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: u.name });
+        }
+        const who = tokens.get(String(m.token || '')); if (!who) return reply({ ok: false, reason: 'auth' });
+        if (m.op === 'me') return reply({ ok: true, id: who, name: accts.users[who]?.name });
+        if (m.op === 'progGet') return reply({ ok: true, prog: accts.prog[who] || {} });
+        if (m.op === 'progSave') { const p = m.prog && typeof m.prog === 'object' ? m.prog : {}; if (JSON.stringify(p).length > 200000) return reply({ ok: false, reason: 'big' }); accts.prog[who] = p; saveAccts(); return reply({ ok: true }); }
+        return reply({ ok: false, reason: 'op' });
+      }
+      case 'boardList': { const b = boards[String(m.key || '').slice(0, 60)] || {}; return reply({ ok: true, list: Object.values(b).sort((x, y) => x.t - y.t).slice(-200) }); }
+      case 'boardPost': {
+        const k = String(m.key || '').slice(0, 60), it = m.item || {}; if (!k || !it.id || !it.text) return reply({ ok: false });
+        boards[k] ||= {}; boards[k][String(it.id).slice(0, 40)] = { id: String(it.id).slice(0, 40), text: String(it.text).slice(0, 300), nm: String(it.nm || '').slice(0, 12), at: +it.at || 0, re: it.re ? String(it.re).slice(0, 40) : '', likes: +it.likes || 0, t: Date.now() };
+        saveBoards(); return reply({ ok: true });
       }
       case 'rooms': {
         const counts = {}; for (const r of rooms.values()) if (r.space === m.space && r.members.size) counts[r.n] = r.members.size;
