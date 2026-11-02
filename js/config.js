@@ -329,9 +329,9 @@ export const ARCADE = {
 // 강의는 유튜브 공식·공개 강의를 퍼가기로 재생. 거래처별로 window.MDL_BRAND.lectures 로 교체
 export const LECTURE_CATS = ['매출 올리기', '가게 홍보', '창업 기초', '매장 운영'];
 // 용마 점주 아카데미: 세일즈 매니저 30강 (원본 MYBOX → 유튜브 '일부 공개'로 올린 뒤 yt 칸에 영상 ID를 채움. 비어 있으면 '영상 준비 중')
-const SALES30_YT = { s01: 'Ok9JzuAd5fs', s15: 'HpiwGFteIXM' }; // 용마미식거리 유튜브 채널 '일부 공개' 영상 ID
+const SALES30_YT = { s01: 'Ok9JzuAd5fs', s02: 'LjRkDDMYPU0', s03: '8q_UG4oDvTQ', s04: 'nZsvtmLf8OE', s05: 'iykonAwKrT0', s06: 'XXdvJttE0dE', s07: '8suwQE8DpPg', s08: 'WPZ1BaxieRc', s09: 'v9eBXsj58DQ', s15: 'HpiwGFteIXM' }; // 용마미식거리 유튜브 채널 '일부 공개' 영상 ID
 const SALES30_T = { s01: '영업 전략 수립', s02: '영업 목표', s03: '영업 운영계획', s04: '고객 상담의 성공 요인', s05: '고객 상담 내용' }; // 실제 제목 (영상 첫 화면 기준, GPT 확인분)
-const SALES30_LEN = { s01: '29:53', s02: '29:22', s03: '33:45', s04: '33:46', s05: '32:14', s15: '30:25' };
+const SALES30_LEN = { s01: '29:54', s02: '29:23', s03: '33:46', s04: '33:47', s05: '32:15', s06: '25:03', s07: '32:42', s08: '28:50', s09: '29:09', s15: '30:25' };
 const SALES30_C = { s03: '매출 관리', s04: '고객 응대', s05: '고객 응대' };
 const SALES30_CAT = n => n <= 8 ? '영업 기초' : n <= 16 ? '고객 응대' : n <= 23 ? '매출 관리' : '홍보·성장';
 export const LECTURE_SETS = {
