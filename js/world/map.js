@@ -412,7 +412,7 @@ function driveIn(anim) {
   const c = document.createElement('canvas'); c.width = 1280; c.height = 704; const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.set(0, SY, -0.04); g.add(scr);
   // 접속하자마자 재생되는 홍보 영상 (라이프카드) — 캔버스 애니메이션
-  const logo = new Image(); logo.src = BRAND.logo;
+  const logo = new Image(); logo.crossOrigin = 'anonymous'; logo.src = BRAND.logo;
   const SC = [[`${BRAND.en} CARD`, `${BRAND.short} 라이프카드`], ['한 장으로 마을 어디서나', '기도 · 놀이터 · 카페 · 식당'], ['화면을 눌러 크게 보기', '소리와 함께 감상할 수 있어요']];
   const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
   let T = 0, acc = 0;
