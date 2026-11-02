@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=11">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="mode-garden">
@@ -28,6 +28,7 @@
     <button class="pill" data-open="sound" aria-label="소리 설정"><span class="ico" id="snd-ico-g">🔇</span><span class="lbl">소리</span></button>
     <button class="pill" data-open="help" aria-label="이용 안내"><span class="ico">ⓘ</span><span class="lbl">안내</span></button>
     <button class="pill" data-open="settings" aria-label="설정"><span class="ico">⚙</span><span class="lbl">설정</span></button>
+    <button class="pill acct-pill" id="acct-pill" aria-label="로그인"><span class="ico">👤</span><span class="lbl" id="acct-lbl">로그인</span></button>
   </nav>
   <div class="enter-grid" id="enter-grid"></div>
   <div class="spot-card" id="spot-card" hidden>
@@ -208,7 +209,7 @@
 
 <div id="modal-video" class="modal program" hidden role="dialog" aria-modal="true" aria-labelledby="vd-title">
   <div class="sheet prog-sheet video-sheet">
-    <div class="prog-bar"><strong id="vd-title">영상</strong><button class="x" data-close aria-label="닫기">✕</button></div>
+    <div class="prog-bar"><strong id="vd-title">영상</strong><span class="vd-prog" id="vd-prog" hidden></span><button class="x" data-close aria-label="닫기">✕</button></div>
     <div class="prog-body">
       <iframe id="vd-frame" title="영상" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen hidden></iframe>
       <div class="vd-empty" id="vd-empty">
@@ -245,10 +246,47 @@
     <div class="bt-btns"><a class="btn primary" id="ph-go" target="_blank" rel="noopener">mirrorphoto.kr 보기 ↗</a></div>
   </div>
 </div>
+
+<div id="modal-lectures" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="lc-title">
+  <div class="sheet lectures-sheet">
+    <div class="bb-head"><h2 id="lc-title">강의 목록</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <div class="lc-now" id="lc-now" hidden><span id="lc-now-t"></span><button class="btn primary" id="lc-join">함께 듣기</button></div>
+    <div class="lc-tabs" id="lc-tabs"></div>
+    <div id="lc-list"></div>
+    <div id="lc-detail" hidden></div>
+    <p class="tiny muted">강의는 각 채널이 유튜브에 공개한 영상을 유튜브 플레이어로 재생합니다. 강의를 틀면 같은 방 사람들에게 '함께 듣기' 안내가 갑니다.</p>
+  </div>
+</div>
+<div id="lec-banner" class="lec-banner" hidden role="status"><span id="lec-banner-t"></span><button class="btn primary" id="lec-banner-go">함께 듣기</button><button class="x" id="lec-banner-x" aria-label="닫기">✕</button></div>
+
+<div id="modal-login" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="lg-title">
+  <div class="sheet login-sheet">
+    <div class="bb-head"><h2 id="lg-title">로그인</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <p class="small muted" id="lg-why">강의실은 로그인한 회원만 들어갈 수 있어요. 수강신청·진도·수료가 계정에 저장됩니다.</p>
+    <div class="rv-tabs"><button class="rv-tab on" data-lg="login">로그인</button><button class="rv-tab" data-lg="signup">회원가입</button></div>
+    <div class="lg-form" id="lg-form">
+      <input id="lg-id" autocomplete="username" maxlength="16" placeholder="아이디 (영문 소문자·숫자 4~16자)" aria-label="아이디">
+      <input id="lg-pw" type="password" autocomplete="current-password" maxlength="64" placeholder="비밀번호 (8자 이상)" aria-label="비밀번호">
+      <input id="lg-pw2" type="password" autocomplete="new-password" maxlength="64" placeholder="비밀번호 확인" aria-label="비밀번호 확인" hidden>
+      <input id="lg-name" maxlength="12" placeholder="이름 (강의실·수료증에 표시)" aria-label="이름" hidden>
+      <p class="small err" id="lg-err" role="alert"></p>
+      <button class="btn primary" id="lg-go">로그인</button>
+    </div>
+    <div id="lg-me" hidden><p><b id="lg-me-name"></b>님으로 로그인되어 있어요.</p><div class="bt-btns"><button class="btn primary" id="lg-mylec">내 강의 보기</button><button class="btn" id="lg-out">로그아웃</button></div></div>
+    <p class="tiny muted" id="lg-note"></p>
+  </div>
+</div>
+<div id="modal-cert" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="ct-title">
+  <div class="sheet cert-sheet">
+    <div class="bb-head"><h2 id="ct-title">수료증</h2><button class="x" data-close aria-label="닫기">✕</button></div>
+    <img id="ct-img" alt="수료증">
+    <div class="bt-btns"><a class="btn primary" id="ct-dl" download="수료증.png">수료증 내려받기</a></div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="hint" hidden><div class="hint-card"><b>이렇게 이용해요</b><p id="hint-text"></p><button class="btn primary" id="hint-ok">알겠어요</button></div></div>
 <div id="fatal" class="overlay" hidden><div class="load-card"><p id="fatal-text"></p><div class="load-actions"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div>
 
-<script type="module" src="js/main.js?v=8"></script>
+<script type="module" src="js/main.js?v=11"></script>
 </body>
 </html>
