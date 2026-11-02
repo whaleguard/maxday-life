@@ -60,7 +60,7 @@ async function reload() {
   if (sel) sel = D.users.find(u => (sel.id && u.id === sel.id) || u.key === sel.key) || null;
   renderAll();
 }
-const TITLES = { dash: ['교육 운영 대시보드', '점주님 학습 현황을 한눈에 확인하세요'], members: ['회원', '점포·대표자·진도 확인, 비밀번호 재설정과 아이디 변경'], missing: ['미가입 점포', '점포 명단과 가입 회원을 점포명으로 대조해요'], lectures: ['강의 현황', '강의별 수강·수료와 영상 연결 상태'], roster: ['점포 명단', '미가입 대조 기준이 되는 점포 목록'], settings: ['설정', '내보내기 · 관리자 비밀번호 · 데이터 보관 위치'] };
+const TITLES = { dash: ['교육 운영 대시보드', '점주님 학습 현황을 한눈에 확인하세요'], members: ['회원', '점포·대표자·진도 확인, 비밀번호 재설정과 아이디 변경'], missing: ['미가입 점포', '가입할 때 명단에서 고른 점포로 대조해요 · 직접 적은 회원은 아래에서 연결'], lectures: ['강의 현황', '강의별 수강·수료와 영상 연결 상태'], roster: ['점포 명단', '미가입 대조 기준이 되는 점포 목록'], settings: ['설정', '내보내기 · 관리자 비밀번호 · 데이터 보관 위치'] };
 function showTab(t) {
   tab = t; $$('.sd-nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   $$('.pane').forEach(p => { p.hidden = p.id !== 'pane-' + t; });
@@ -77,14 +77,23 @@ function stat(u) {
   for (const l of LECTURES) { const r = P[l.id]; if (!r || !r.enrolled) continue; en++; if (r.done) done++; sum += r.done ? 100 : lecPct(r); lastAct = Math.max(lastAct, r.last || 0, r.enrolled || 0, r.done || 0); }
   return { en, done, avg: en ? Math.round(sum / en) : 0, lastAct };
 }
+// 점포 대조: 가입할 때 명단에서 고른 점포(storeNo)로 연결 — 이름을 다르게 적어도 어긋나지 않음.
+// 직접 입력한 회원(storeNo 없음)은 '미연결'로 두고, 이름이 비슷한 명단 점포를 제안 → 관리자가 한 번 눌러 연결
+const rkey = r => String(r.no || r.store || '');
+const linkedRow = u => u.storeNo ? roster().find(r => rkey(r) === u.storeNo) : null;
+function suggest(u) { const k = normStore(u.store); if (!k) return null; return roster().find(r => { const x = normStore(r.store); return x && (x === k || (k.length > 1 && x.length > 1 && (x.includes(k) || k.includes(x)))); }) || null; }
 function matched() {
-  const R = roster(); const keys = D.users.map(u => [normStore(u.store), u]).filter(([k]) => k);
-  const hit = k => keys.filter(([kk]) => kk === k || (k.length > 1 && kk.length > 1 && (kk.includes(k) || k.includes(kk)))).map(x => x[1]);
-  const joined = [], missing = []; R.forEach(r => { const us = hit(normStore(r.store)); (us.length ? joined : missing).push({ ...r, users: us }); });
-  const rk = R.map(r => normStore(r.store)).filter(Boolean);
-  const extra = D.users.filter(u => { const k = normStore(u.store); return !k || !rk.some(x => x === k || x.includes(k) || k.includes(x)); });
+  const R = roster();
+  const joined = [], missing = []; R.forEach(r => { const us = D.users.filter(u => u.storeNo && u.storeNo === rkey(r)); (us.length ? joined : missing).push({ ...r, users: us }); });
+  const extra = D.users.filter(u => !linkedRow(u)).map(u => Object.assign(u, { sug: suggest(u) }));
   return { joined, missing, extra };
 }
+async function linkUser(u, r, btn) {
+  if (btn) btn.disabled = true; let res; try { res = await withTimeout(api.edit(u, r ? { storeNo: rkey(r), store: r.store } : { storeNo: '' }), 20000); } catch (e) { res = { ok: false, msg: '연결이 늦어요.' }; } if (btn) btn.disabled = false;
+  if (!res.ok) { toast(res.msg); return; } u.storeNo = r ? rkey(r) : ''; if (r) u.store = r.store; if (u.rec) { u.rec.storeNo = u.storeNo; if (r) u.rec.store = r.store; }
+  toast(r ? `${u.owner || u.name}님을 「${r.store}」에 연결했어요.` : '점포 연결을 풀었어요.'); renderAll();
+}
+const rosterOpts = cur => '<option value="">— 명단 점포 선택 —</option>' + roster().map(r => `<option value="${esc(rkey(r))}"${rkey(r) === cur ? ' selected' : ''}>${r.no ? esc(r.no) + '번 · ' : ''}${esc(r.store)}</option>`).join('');
 function events() {
   const ev = []; const nm = u => `${u.store || '점포 미입력'} · ${u.owner || u.name || u.id}`;
   D.users.forEach(u => {
@@ -188,7 +197,7 @@ function renderMembers() {
   const list = filtered(); if ($('#mem-count')) $('#mem-count').textContent = `${list.length}명`;
   const html = `<table class="tbl"><thead><tr><th>점포명</th><th>대표자</th><th>아이디</th><th>최근 접속</th><th class="n">신청</th><th class="n">수료</th><th>평균 진도</th><th class="c">관리</th></tr></thead><tbody>` +
     (list.length ? list.map(u => `<tr class="${u.off ? 'off' : ''}${sel && sel.key === u.key ? ' sel' : ''}" data-k="${esc(u.key)}">
-      <td data-l="점포명"><b>${esc(u.store || '—')}</b>${u.off ? ' <em class="tag off">이용 중지</em>' : ''}${u.legacy ? ' <em class="tag">이전 형식</em>' : ''}</td>
+      <td data-l="점포명"><b>${esc(u.store || '—')}</b>${u.off ? ' <em class="tag off">이용 중지</em>' : ''}${u.legacy ? ' <em class="tag">이전 형식</em>' : ''}${!linkedRow(u) ? ' <em class="tag warn">명단 미연결</em>' : ''}</td>
       <td data-l="대표자">${esc(u.owner || u.name || '—')}</td><td data-l="아이디" class="mono">${esc(u.id || '(확인 불가)')}</td>
       <td data-l="최근 접속">${ago(u.st.lastAct)}</td><td data-l="신청" class="n">${u.st.en}</td><td data-l="수료" class="n">${u.st.done}</td>
       <td data-l="평균 진도"><span class="pbar"><i style="width:${u.st.avg}%"></i></span><small class="pv">${u.st.avg}%</small></td>
@@ -209,6 +218,7 @@ function renderDetail() {
       <dl><dt>대표자</dt><dd>${esc(u.owner || u.name || '—')}</dd><dt>아이디</dt><dd class="mono">${esc(u.id || '(확인 불가)')}</dd><dt>가입일</dt><dd>${fmtDT(u.at)}</dd><dt>최근 로그인</dt><dd>${fmtDT(u.last)}</dd></dl>
       <div class="dt-nums"><div><span>신청</span><b>${s.en}<small>강</small></b></div><div><span>수료</span><b>${s.done}<small>강</small></b></div><div><span>평균</span><b>${s.avg}<small>%</small></b></div></div></div>
     ${u.legacy ? '<p class="note">이전 형식 계정입니다. 회원이 한 번 로그인하면 아이디 표시·비밀번호 재설정이 가능해져요.</p>' : ''}
+    <div class="dt-sub dt-link${linkedRow(u) ? '' : ' warn'}"><label>명단 점포 연결${linkedRow(u) ? '' : ' <i class="tag warn">미연결</i>'}<select id="dr-link">${rosterOpts(u.storeNo)}</select></label><button class="ad-btn sm" id="dr-link-go">연결</button>${!linkedRow(u) ? `<p class="tiny">가입 때 적은 점포명: <b>${esc(u.store || '없음')}</b>${u.sug ? ` · 비슷한 명단 점포: <b>${esc(u.sug.store)}</b>` : ''}</p>` : ''}</div>
     <div class="dt-acts"><button class="ad-btn" id="dr-temp">임시 비밀번호 발급</button><button class="ad-btn ghost" id="dr-rename-open">아이디 변경</button><button class="ad-btn ${u.off ? 'ghost' : 'danger'}" id="dr-off">${u.off ? '이용 중지 풀기' : '이용 중지'}</button></div>
     <p class="dt-out" id="dr-pw-out" hidden></p>
     <div class="dt-sub" id="dr-rename-box" hidden><label>새 아이디<input id="dr-newid" maxlength="16" placeholder="영문 소문자·숫자 4~16자"></label><button class="ad-btn sm" id="dr-rename">바꾸기</button><p class="tiny">바꾸면 기존 아이디로는 로그인이 안 되고, 진도는 새 아이디로 옮겨져요.</p></div>
@@ -222,6 +232,8 @@ function renderDetail() {
     <p class="tiny muted">진도는 실제로 재생된 구간만 셉니다. 90% 이상 보면 수료.</p>`;
   const busy = async (btn, fn) => { btn.disabled = true; try { return await withTimeout(fn(), 20000); } catch (e) { return { ok: false, msg: '연결이 늦어요. 다시 시도해 주세요.' }; } finally { btn.disabled = false; } };
   const setPw = async (btn, pw) => { const r = await busy(btn, () => api.setPassword(u, pw)); if (!r.ok) { toast(r.msg); return; } const o = $('#dr-pw-out'); o.hidden = false; o.innerHTML = `임시 비밀번호 <b class="mono">${esc(pw)}</b><button class="ad-btn sm" id="dr-copy">안내 문구 복사</button><small>이 화면을 벗어나면 다시 볼 수 없어요. 점주님께 전화·문자로 알려 드리세요.</small>`; $('#dr-copy').onclick = () => copy(`[${BRAND.ko}] ${u.owner || u.name}님, 아이디 ${u.id} / 임시 비밀번호 ${pw} 로 로그인해 주세요.\n${HOME}`); if ($('#dr-pw')) $('#dr-pw').value = ''; };
+  if (!linkedRow(u) && !u.sug) u.sug = suggest(u); if (!linkedRow(u) && u.sug) $('#dr-link').value = rkey(u.sug);
+  $('#dr-link-go').onclick = e => { const v = $('#dr-link').value; const r = roster().find(x => rkey(x) === v); if (!r) { toast('연결할 명단 점포를 골라 주세요.'); return; } linkUser(u, r, e.currentTarget); };
   $('#dr-temp').onclick = e => setPw(e.currentTarget, tempPassword());
   $('#dr-setpw').onclick = e => { const pw = $('#dr-pw').value; if (pw.length < 8) { toast('비밀번호는 8자 이상이어야 해요.'); return; } setPw(e.currentTarget, pw); };
   $('#dr-rename-open').onclick = () => { $('#dr-rename-box').hidden = !$('#dr-rename-box').hidden; if (!$('#dr-rename-box').hidden) $('#dr-newid').focus(); };
@@ -236,15 +248,17 @@ async function copy(t) { try { await navigator.clipboard.writeText(t); toast('�
 function renderMissing() {
   const m = matched();
   $('#pane-missing').innerHTML = `
-    <div class="kpis k3"><div class="kpi"><div><span>점포 명단</span><b>${roster().length}<small>곳</small></b><small>점포 명단 메뉴에서 수정</small></div><i class="kic">${svgI('store')}</i></div><div class="kpi"><div><span>가입 완료</span><b>${m.joined.length}<small>곳</small></b><small>점포명으로 대조</small></div><i class="kic">${svgI('users')}</i></div><div class="kpi warn"><div><span>미가입</span><b>${m.missing.length}<small>곳</small></b><small>안내 문구를 보내 주세요</small></div><i class="kic">${svgI('chart')}</i></div></div>
+    <div class="kpis k3"><div class="kpi"><div><span>점포 명단</span><b>${roster().length}<small>곳</small></b><small>점포 명단 메뉴에서 수정</small></div><i class="kic">${svgI('store')}</i></div><div class="kpi"><div><span>가입 완료</span><b>${m.joined.length}<small>곳</small></b><small>가입 때 고른 점포로 대조</small></div><i class="kic">${svgI('users')}</i></div><div class="kpi warn"><div><span>미가입</span><b>${m.missing.length}<small>곳</small></b><small>안내 문구를 보내 주세요</small></div><i class="kic">${svgI('chart')}</i></div></div>
+    ${m.extra.length ? `<article class="card attn"><header><h2>점포 연결이 필요한 회원 ${m.extra.length}명</h2></header><p class="small muted">가입할 때 명단에서 고르지 않고 점포명을 직접 적은 회원이에요. 맞는 명단 점포를 골라 연결하면 미가입 대조와 통계에 반영돼요. (비슷한 이름은 자동으로 골라 둡니다)</p><ul class="mlist big warn link">${m.extra.map(u => `<li data-k="${esc(u.key)}"><span class="mno">!</span><span class="lk-who"><b>${esc(u.store || '점포명 없음')}</b><small>${esc(u.owner || u.name)} (${esc(u.id)})</small></span><select data-link="${esc(u.key)}">${rosterOpts(u.sug ? rkey(u.sug) : '')}</select><button class="ad-btn xs" data-link-go="${esc(u.key)}">연결</button></li>`).join('')}</ul></article>` : ''}
     <article class="card"><header><h2>미가입 점포 ${m.missing.length}곳</h2><div class="tb-tools"><button class="ad-btn ghost sm" id="ms-msg">공통 안내 문구 복사</button><button class="ad-btn ghost sm" id="ms-csv">미가입 명단 CSV</button></div></header>
       ${m.missing.length ? `<ul class="mlist big">${m.missing.map(r => `<li><span class="mno">${esc(r.no || '·')}</span><b>${esc(r.store)}</b><small>${esc(r.owner || '대표자 미입력')}</small><button class="ad-btn ghost xs" data-inv="${esc(r.store)}">안내 문구 복사</button></li>`).join('')}</ul>` : '<p class="empty-note">명단의 모든 점포가 가입했어요.</p>'}</article>
     <article class="card"><header><h2>가입 완료 점포 ${m.joined.length}곳</h2></header>${m.joined.length ? `<ul class="mlist big ok">${m.joined.map(r => `<li><span class="mno">${esc(r.no || '·')}</span><b>${esc(r.store)}</b><small>${r.users.map(u => esc(u.owner || u.name) + ' (' + esc(u.id) + ')').join(', ')}</small></li>`).join('')}</ul>` : '<p class="empty-note">아직 없어요.</p>'}</article>
-    ${m.extra.length ? `<article class="card"><header><h2>명단에 없는 가입 회원 ${m.extra.length}명</h2></header><p class="small muted">점포명을 다르게 적었거나 명단에 없는 점포예요. 회원 상세에서 점포명을 고치거나, 점포 명단에 추가해 주세요.</p><ul class="mlist big warn">${m.extra.map(u => `<li data-k="${esc(u.key)}"><span class="mno">!</span><b>${esc(u.store || '점포명 없음')}</b><small>${esc(u.owner || u.name)} (${esc(u.id)})</small></li>`).join('')}</ul></article>` : ''}`;
+`;
   $('#ms-msg').onclick = () => copy(inviteMsg());
   $('#ms-csv').onclick = () => dl('미가입점포.csv', [['부스번호', '점포명', '대표자'], ...m.missing.map(r => [r.no, r.store, r.owner])]);
   $$('#pane-missing [data-inv]').forEach(b => b.onclick = () => copy(inviteMsg(b.dataset.inv)));
-  $$('#pane-missing li[data-k]').forEach(li => li.onclick = () => selectUser(li.dataset.k));
+  $$('#pane-missing [data-link-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const u = D.users.find(x => x.key === b.dataset.linkGo); const v = $(`select[data-link="${CSS.escape(b.dataset.linkGo)}"]`).value; const r = roster().find(x => rkey(x) === v); if (!r) { toast('연결할 명단 점포를 골라 주세요.'); return; } linkUser(u, r, b); });
+  $$('#pane-missing li[data-k] .lk-who').forEach(el => el.onclick = () => selectUser(el.closest('li').dataset.k));
 }
 
 // ---------- 강의 현황 ----------

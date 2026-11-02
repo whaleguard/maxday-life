@@ -88,6 +88,7 @@ function wireAccount() {
   if (BRAND.sister && !document.getElementById('sister-pill')) { const s = document.createElement('a'); s.id = 'sister-pill'; s.className = 'pill'; s.href = BRAND.sister.url; s.target = '_blank'; s.rel = 'noopener'; s.innerHTML = `<span class="ico">↗</span><span class="lbl">${esc(BRAND.sister.label)}</span>`; s.title = BRAND.sister.label; s.setAttribute('aria-label', BRAND.sister.label); document.querySelector('.g-menu').insertBefore(s, $('#acct-pill')); }
   $('#acct-pill').onclick = () => openLogin(null);
   document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.onclick = () => setLgMode(t.dataset.lg));
+  if ($('#lg-store-sel')) $('#lg-store-sel').onchange = syncStoreInput;
   $('#lg-go').onclick = submitLogin; ['lg-id', 'lg-pw', 'lg-pw2', 'lg-name', 'lg-store'].filter(k => $('#' + k)).forEach(k => $('#' + k).onkeydown = e => { if (e.key === 'Enter') submitLogin(); });
   $('#lg-out').onclick = () => { account.logout(); syncAcctUI(); closeModal('login'); toast('로그아웃했어요.'); if (app.space === 'lecture') leaveToMap(); };
   $('#lg-mylec').onclick = () => { closeModal('login'); openLectures(null, true); };
@@ -600,6 +601,19 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 function lecById(id) { return LECTURES.find(l => l.id === id); }
 const ACAD = SPACE_ORDER.join() === 'lecture';
 function orgFooter() { const O = (window.MDL_BRAND || {}).org; if (!O || !O.name) return; document.querySelectorAll('.org-foot').forEach(e => e.remove()); const html = `<b>교육 주관</b> ${esc(O.name)} · 대표 ${esc(O.ceo || '')} · 사업자등록번호 ${esc(O.bizno || '')}<br>${esc(O.addr || '')}${O.email ? ' · ' + esc(O.email) : ''}`; ['#modal-lectures .sheet', '#modal-login .sheet'].forEach(sel => { const sh = document.querySelector(sel); if (sh) { const p = document.createElement('p'); p.className = 'org-foot'; p.innerHTML = html; sh.appendChild(p); } }); }
+// 점주 가입: 점포 명단에서 고르기 (이름을 제각각 적어 대조가 어긋나는 일 방지). 목록에 없으면 직접 입력 → 관리자가 연결
+let ROSTER = null;
+const DEFAULT_ROSTER = [...(STREET.food || []), ...(STREET.market || [])].map(r => ({ no: String(r[0]), store: r[1] }));
+async function loadRoster() {
+  if (ROSTER) return ROSTER;
+  let list = null;
+  try { list = account.server ? (await withTimeout(net.acct('rosterGet', {}), 6000)).roster : ((await withTimeout(net.kvGet('roster'), 6000)) || {}).list; } catch (e) {}
+  ROSTER = (Array.isArray(list) && list.length ? list : DEFAULT_ROSTER).map(r => ({ no: String(r.no || ''), store: String(r.store || '') })).filter(r => r.store);
+  const sel = $('#lg-store-sel'); if (sel) { const cur = sel.value; sel.innerHTML = '<option value="">내 점포를 골라 주세요</option>' + ROSTER.map((r, i) => `<option value="${i}">${r.no ? esc(r.no) + '번 · ' : ''}${esc(r.store)}</option>`).join('') + '<option value="__other">목록에 없어요 (직접 입력)</option>'; sel.value = cur; }
+  return ROSTER;
+}
+function storeInfo() { const sv = $('#lg-store-sel')?.value; if (sv && sv !== '__other' && ROSTER && ROSTER[+sv]) { const r = ROSTER[+sv]; return { store: r.store, storeNo: r.no || r.store }; } return { store: ($('#lg-store')?.value || '').trim(), storeNo: '' }; }
+function syncStoreInput() { const sel = $('#lg-store-sel'), inp = $('#lg-store'); if (!sel || !inp) return; inp.hidden = sel.hidden || sel.value !== '__other'; }
 function lecThumb(l) { return l.yt ? `<img src="https://i.ytimg.com/vi/${l.yt}/mqdefault.jpg" alt="" loading="lazy">` : `<span class="lc-ph"><b>${l.n || ''}<small>강</small></b><i>${esc(l.cat || '')}</i>${l.yt === '' ? '<em>영상 준비 중</em>' : ''}</span>`; }
 function lecSec(len) { return String(len || '0').split(':').reduce((a, b) => a * 60 + (+b || 0), 0); }
 const fmtT = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss2 = s % 60; return (h ? h + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss2).padStart(2, '0'); };
@@ -615,12 +629,12 @@ function openLogin(next, why) {
   if (me) $('#lg-me-name').textContent = `${me.store ? me.store + ' · ' : ''}${me.name} (${me.id})`;
   $('#lg-err').textContent = ''; openModal('login'); if (!me) setTimeout(() => $('#lg-id').focus(), 30);
 }
-function setLgMode(mode) { lgMode = mode; document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.classList.toggle('on', t.dataset.lg === mode)); $('#lg-pw2').hidden = $('#lg-name').hidden = mode !== 'signup'; if ($('#lg-store')) $('#lg-store').hidden = mode !== 'signup' || !ACAD; $('#lg-name').placeholder = ACAD ? '대표자명 (수료증에 표시)' : '이름 (강의실·수료증에 표시)'; if ($('#lg-forgot')) $('#lg-forgot').hidden = mode === 'signup' || !ACAD; $('#lg-go').textContent = mode === 'signup' ? '가입하고 시작하기' : '로그인'; $('#lg-title').textContent = mode === 'signup' ? '회원가입' : '로그인'; $('#lg-pw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password'; $('#lg-err').textContent = ''; }
+function setLgMode(mode) { lgMode = mode; document.querySelectorAll('#modal-login .rv-tab').forEach(t => t.classList.toggle('on', t.dataset.lg === mode)); $('#lg-pw2').hidden = $('#lg-name').hidden = mode !== 'signup'; if ($('#lg-store-sel')) { $('#lg-store-sel').hidden = mode !== 'signup' || !ACAD; if (!$('#lg-store-sel').hidden) loadRoster(); } syncStoreInput(); $('#lg-name').placeholder = ACAD ? '대표자명 (수료증에 표시)' : '이름 (강의실·수료증에 표시)'; if ($('#lg-forgot')) $('#lg-forgot').hidden = mode === 'signup' || !ACAD; $('#lg-go').textContent = mode === 'signup' ? '가입하고 시작하기' : '로그인'; $('#lg-title').textContent = mode === 'signup' ? '회원가입' : '로그인'; $('#lg-pw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password'; $('#lg-err').textContent = ''; }
 async function submitLogin() {
   const id = $('#lg-id').value, pw = $('#lg-pw').value; $('#lg-err').textContent = '';
-  if (lgMode === 'signup') { if (pw !== $('#lg-pw2').value) { $('#lg-err').textContent = '비밀번호 확인이 맞지 않아요.'; return; } const nm = $('#lg-name').value.trim(); if (ACAD && (!nm || !$('#lg-store')?.value.trim())) { $('#lg-err').textContent = '점포명과 대표자명을 모두 적어 주세요.'; return; } if (nm) { const [ok, er] = validName(nm); if (!ok) { $('#lg-err').textContent = er; return; } } }
+  if (lgMode === 'signup') { if (pw !== $('#lg-pw2').value) { $('#lg-err').textContent = '비밀번호 확인이 맞지 않아요.'; return; } const nm = $('#lg-name').value.trim(); if (ACAD) { const sv = $('#lg-store-sel')?.value; if (!sv) { $('#lg-err').textContent = '내 점포를 골라 주세요. 목록에 없으면 맨 아래 \'직접 입력\'을 고르세요.'; return; } if (sv === '__other' && !$('#lg-store')?.value.trim()) { $('#lg-err').textContent = '점포명을 적어 주세요.'; return; } if (!nm) { $('#lg-err').textContent = '대표자명을 적어 주세요.'; return; } } if (nm) { const [ok, er] = validName(nm); if (!ok) { $('#lg-err').textContent = er; return; } } }
   $('#lg-go').disabled = true; $('#lg-go').textContent = '확인 중…';
-  let r; try { r = await withTimeout(lgMode === 'signup' ? account.signup(id, pw, { owner: $('#lg-name').value, store: ACAD ? ($('#lg-store')?.value || '') : '', need: ACAD }) : account.login(id, pw), 20000); } catch (e) { r = { ok: false, msg: '연결이 늦어요. 잠시 후 다시 시도해 주세요.' }; }
+  let r; try { r = await withTimeout(lgMode === 'signup' ? account.signup(id, pw, { owner: $('#lg-name').value, ...(ACAD ? storeInfo() : {}), need: ACAD }) : account.login(id, pw), 20000); } catch (e) { r = { ok: false, msg: '연결이 늦어요. 잠시 후 다시 시도해 주세요.' }; }
   $('#lg-go').disabled = false; setLgMode(lgMode);
   if (!r.ok) { $('#lg-err').textContent = r.msg; return; }
   $('#lg-pw').value = $('#lg-pw2').value = ''; closeModal('login'); syncAcctUI(); toast(`${account.user.name}님, 반가워요!`);
