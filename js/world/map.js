@@ -15,6 +15,8 @@ export const MAP_SPOTS = {
 export const FEATURED = SPACE_ORDER[0] === 'foodstreet'; // 미식거리 중심 마을(용마): 지도 가운데 크게
 if (SPACES.foodstreet) MAP_SPOTS.foodstreet = FEATURED ? { pos: [-3, 0, -12], view: { pos: [-3, 26, 24], look: [-3, 4, -13] }, pinH: 7 } : { pos: [-12, 0, -11], view: { pos: [-12, 12, 12], look: [-12, 2, -12] }, pinH: 9 };
 if (SPACES.arcade) MAP_SPOTS.arcade = { pos: [43, 0, -9], view: { pos: [43, 8, 8], look: [43, 2.5, -10] }, pinH: 7 };
+export const SOLO = SPACE_ORDER.length === 1; // 공간이 하나뿐인 거래처(예: 점주 아카데미) — 지도 가운데 크게
+if (SPACES.lecture) MAP_SPOTS.lecture = SOLO ? { pos: [0, 0, -6], view: { pos: [0, 16, 22], look: [0, 4, -7] }, pinH: 15 } : SPACE_ORDER[0] === 'foodstreet' ? { pos: [30, 0, -8], view: { pos: [30, 8, 10], look: [30, 2.6, -9] }, pinH: 7.5 } : { pos: [43, 0, -9], view: { pos: [43, 8, 8], look: [43, 2.6, -10] }, pinH: 7.5 };
 for (const k of Object.keys(MAP_SPOTS)) if (!SPACE_ORDER.includes(k)) delete MAP_SPOTS[k];
 const HAS_TEMPLE = SPACE_ORDER.includes('temple');
 
@@ -106,7 +108,8 @@ export function buildMap({ low }) {
   if (MAP_SPOTS.restaurant) reg('restaurant', restaurantBuilding());
   if (MAP_SPOTS.foodstreet) reg('foodstreet', foodStreetMap(anim));
   if (MAP_SPOTS.arcade) reg('arcade', arcadeBuilding(anim));
-  const di = driveIn(anim); scene.add(di); clickables.push(di);
+  if (MAP_SPOTS.lecture) reg('lecture', lectureBuilding());
+  if (BRAND.drivein) { const di = driveIn(anim); scene.add(di); clickables.push(di); }
   // 12지신 석상 — 절로 올라가는 돌계단 양옆 (누르면 띠별 운세)
   if (HAS_TEMPLE) ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'].forEach((id, i) => {
     const side = i % 2 ? 1 : -1, t = 0.02 + Math.floor(i / 2) * 0.165; const z = -24 - t * 10, x = -28 - t * 2 + side * 2.15; const y = heightAt(x, z);
@@ -160,7 +163,7 @@ export function buildMap({ low }) {
   };
 }
 
-const inFeat = (x, z, m = 0) => FEATURED && Math.abs(x + 3) < 19 + m && Math.abs(z + 12) < 15 + m;
+const inFeat = (x, z, m = 0) => (FEATURED && Math.abs(x + 3) < 19 + m && Math.abs(z + 12) < 15 + m) || (SOLO && Math.abs(x) < 13 + m && Math.abs(z + 5) < 11 + m);
 function nearAny(x, z, r) { return inFeat(x, z, r * 0.3) || Object.values(MAP_SPOTS).some(s => Math.hypot(s.pos[0] - x, s.pos[2] - z) < r + 4) || (Math.abs(x - DRIVE_IN.pos[0]) < 16 + r * 0.5 && z > DRIVE_IN.pos[2] - 5 - r * 0.5 && z < DRIVE_IN.pos[2] + 18 + r * 0.5); }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -522,5 +525,24 @@ function arcadeBuilding(anim) {
   for (const sx of [-3.8, 3.8]) { const m = new THREE.Group(); m.position.set(sx, 0.3, 3.4); g.add(m); place(box(0.8, 1.6, 0.7, M(sx < 0 ? '#ff6e9a' : '#5ed3c4')), 0, 0.8, 0, m); place(new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), new THREE.MeshPhysicalMaterial({ color: '#fff', transparent: true, opacity: 0.35 })), 0, 1.9, 0, m); }
   const pl = new THREE.PointLight('#b68cff', 8, 12, 1.6); pl.position.set(0, 3, 4); g.add(pl);
   anim.push((t, red) => { if (red) return; strips.forEach((s, i) => s.material.color.set(neonCols[(i + Math.floor(t * 1.5)) % 3])); });
+  return shadow(g);
+}
+
+/* ---------- 강의실 (유리 커튼월 교육관) ---------- */
+function lectureBuilding() {
+  const g = new THREE.Group(); const [cx, , cz] = MAP_SPOTS.lecture.pos; g.position.set(cx, heightAt(cx, cz), cz); if (SOLO) g.scale.setScalar(2.0);
+  place(box(10, 0.3, 8, M('#bdb6a8')), 0, 0.15, 0.5, g);
+  place(box(9, 5.2, 5.8, M('#e9e4da', { roughness: 0.7 })), 0, 2.9, -0.6, g);
+  place(box(9.4, 0.35, 6.2, M(SPACE_ORDER.join() === 'lecture' ? '#49334F' : '#3c4a46')), 0, 5.65, -0.6, g);
+  const glass = new THREE.MeshStandardMaterial({ color: '#cfe6f0', emissive: '#8fc7e0', emissiveIntensity: 0.45, roughness: 0.1, metalness: 0.2 });
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) place(box(1.9, 2.0, 0.05, glass), -3.15 + i * 2.1, 1.55 + r * 2.4, 2.32, g);
+  for (let i = 0; i < 5; i++) place(box(0.12, 5.2, 0.12, M('#3c4a46')), -4.2 + i * 2.1, 2.9, 2.36, g);
+  place(box(9, 0.14, 0.14, M('#3c4a46')), 0, 2.75, 2.36, g);
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
+  const AC = SPACE_ORDER.join() === 'lecture'; x.fillStyle = AC ? '#49334F' : '#1F4A3F'; x.fillRect(0, 0, 512, 128); x.fillStyle = '#ffffff'; let fs = 54; x.font = `800 ${fs}px "Noto Sans KR", sans-serif`; while (x.measureText(SPACES.lecture.name).width > 480 && fs > 24) { fs -= 2; x.font = `800 ${fs}px "Noto Sans KR", sans-serif`; } x.textAlign = 'center'; x.fillText(SPACES.lecture.name, 256, 72); x.fillStyle = AC ? '#F2B38D' : '#bfe3d6'; x.font = '600 24px sans-serif'; x.fillText('ACADEMY · 강의 듣기', 256, 108);
+  const st = new THREE.CanvasTexture(c); st.colorSpace = THREE.SRGBColorSpace;
+  place(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: st, toneMapped: false })), 0, 6.5, 2.0, g);
+  for (let i = 0; i < 3; i++) place(box(3.2 - i * 0.3, 0.15, 0.5, M('#a59d8e')), 0, 0.37 + i * 0.15, 3.2 - i * 0.4, g);
+  for (const sx of [-4.6, 4.6]) { const p = new THREE.Group(); p.position.set(sx, 0.3, 3.4); g.add(p); place(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4, 8), M('#ccc', { metalness: 0.6 })), 0, 2, 0, p); place(box(0.9, 0.6, 0.02, M(SPACE_ORDER.join() === 'lecture' ? '#F2B38D' : '#2f5d50')), 0.47, 3.6, 0, p); }
   return shadow(g);
 }
