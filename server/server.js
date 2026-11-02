@@ -133,10 +133,11 @@ wss.on('connection', ws => {
       }
       case 'acct': { // 계정 · 수강신청 · 진도 (op: signup | login | me | progGet | progSave | admin*)
         const id = String(m.uid || '').toLowerCase();
+        if (m.op === 'rosterGet') return reply({ ok: true, roster: (accts.roster || []).map(r => ({ no: r.no, store: r.store })) }); // 가입 화면 점포 선택용(대표자명은 내보내지 않음)
         if (m.op === 'signup') {
           if (!/^[a-z0-9_]{4,16}$/.test(id) || String(m.pw || '').length < 8) return reply({ ok: false, reason: 'bad' });
           if (accts.users[id]) return reply({ ok: false, reason: 'taken' });
-          const salt = crypto.randomBytes(16).toString('hex'); const at0 = Date.now(); accts.users[id] = { name: String(m.owner || m.name || id).slice(0, 12), store: String(m.store || '').slice(0, 30), owner: String(m.owner || '').slice(0, 12), salt, hash: hashPw(m.pw, salt), at: at0, last: at0 }; saveAccts();
+          const salt = crypto.randomBytes(16).toString('hex'); const at0 = Date.now(); accts.users[id] = { name: String(m.owner || m.name || id).slice(0, 12), store: String(m.store || '').slice(0, 30), storeNo: String(m.storeNo || '').slice(0, 30), owner: String(m.owner || '').slice(0, 12), salt, hash: hashPw(m.pw, salt), at: at0, last: at0 }; saveAccts();
           const tk = crypto.randomBytes(24).toString('hex'); tokens.set(tk, id); return reply({ ok: true, token: tk, name: accts.users[id].name });
         }
         if (m.op === 'login') {
@@ -153,14 +154,14 @@ wss.on('connection', ws => {
             const tk = crypto.randomBytes(24).toString('hex'); adminTokens.set(tk, Date.now() + 12 * 3600e3); return reply({ ok: true, token: tk });
           }
           const exp = adminTokens.get(String(m.token || '')); if (!exp || exp < Date.now()) return reply({ ok: false, reason: 'auth' });
-          const pub = (id, u) => ({ id, name: u.name, store: u.store || '', owner: u.owner || '', at: u.at, last: u.last || 0, off: !!u.off });
+          const pub = (id, u) => ({ id, name: u.name, store: u.store || '', storeNo: u.storeNo || '', owner: u.owner || '', at: u.at, last: u.last || 0, off: !!u.off });
           if (m.op === 'adminList') return reply({ ok: true, users: Object.entries(accts.users).map(([id, u]) => pub(id, u)), prog: accts.prog, roster: accts.roster || null });
           const tid = String(m.uid || '').toLowerCase(); const u = accts.users[tid];
           if (m.op === 'adminRoster') { if (!Array.isArray(m.roster)) return reply({ ok: false, reason: 'bad' }); accts.roster = m.roster.slice(0, 500).map(r => ({ store: String(r.store || '').slice(0, 30), owner: String(r.owner || '').slice(0, 12), no: String(r.no || '').slice(0, 10) })); saveAccts(); return reply({ ok: true }); }
           if (!u) return reply({ ok: false, reason: 'nouser' });
           const kick = id => { for (const [k, v] of tokens) if (v === id) tokens.delete(k); };
           if (m.op === 'adminSetPw') { if (String(m.pw || '').length < 8) return reply({ ok: false, reason: 'bad' }); u.salt = crypto.randomBytes(16).toString('hex'); u.hash = hashPw(m.pw, u.salt); kick(tid); saveAccts(); return reply({ ok: true }); }
-          if (m.op === 'adminEdit') { if (m.store !== undefined) u.store = String(m.store).slice(0, 30); if (m.owner !== undefined) { u.owner = String(m.owner).slice(0, 12); u.name = u.owner || u.name; } if (m.off !== undefined) { u.off = !!m.off; if (u.off) kick(tid); } saveAccts(); return reply({ ok: true }); }
+          if (m.op === 'adminEdit') { if (m.store !== undefined) u.store = String(m.store).slice(0, 30); if (m.storeNo !== undefined) u.storeNo = String(m.storeNo).slice(0, 30); if (m.owner !== undefined) { u.owner = String(m.owner).slice(0, 12); u.name = u.owner || u.name; } if (m.off !== undefined) { u.off = !!m.off; if (u.off) kick(tid); } saveAccts(); return reply({ ok: true }); }
           if (m.op === 'adminRename') { const to = String(m.to || '').toLowerCase(); if (!/^[a-z0-9_]{4,16}$/.test(to)) return reply({ ok: false, reason: 'bad' }); if (accts.users[to]) return reply({ ok: false, reason: 'taken' }); accts.users[to] = u; delete accts.users[tid]; if (accts.prog[tid]) { accts.prog[to] = accts.prog[tid]; delete accts.prog[tid]; } kick(tid); saveAccts(); return reply({ ok: true }); }
           if (m.op === 'adminDelete') { delete accts.users[tid]; delete accts.prog[tid]; kick(tid); saveAccts(); return reply({ ok: true }); }
           return reply({ ok: false, reason: 'op' });
